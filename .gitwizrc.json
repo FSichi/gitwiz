@@ -1,5 +1,8 @@
 {
   "mainBranch": "main",
   "developBranch": "main",
-  "tagPrefix": "v"
+  "tagPrefix": "v",
+  "release": {
+    "alsoMergeToMain": true
+  }
 }
