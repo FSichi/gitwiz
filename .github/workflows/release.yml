@@ -6,7 +6,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # npm provenance
+  id-token: write # required for npm Trusted Publishing (OIDC) + provenance
 
 jobs:
   publish:
@@ -17,11 +17,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@latest # Trusted Publishing needs npm >= 11.5.1
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
+      # No NPM_TOKEN: auth comes from GitHub's OIDC token via Trusted Publishing,
+      # configured at npmjs.com → package → Settings → Trusted Publisher.
       - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
