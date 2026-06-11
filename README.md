@@ -70,6 +70,102 @@ A menu of safe undos, each showing the exact git command it will run. Destructiv
 
 The changelog merge is structural: your existing `CHANGELOG.md` preamble (badges, custom intro) is preserved verbatim, old releases are kept, and re-running the same version replaces its section instead of duplicating it. CRLF files stay CRLF.
 
+## Development workflow
+
+gitwiz is built around a simple branch model:
+
+- **`main`** — production. Only release-quality, tagged code lands here.
+- **`develop`** — integration. Day-to-day work merges here before it ships.
+
+Work branches are created from `develop` (except `hotfix/`, which branches from `main` to patch production fast). If you prefer **trunk-based** development, set `developBranch` to the same value as `mainBranch` and everything below still works with a single branch.
+
+### Which command do I use?
+
+| Situation | Command |
+|---|---|
+| First time setting up gitwiz in a repo | `gitwiz init` |
+| Starting **any** new work (feature, fix, refactor, chore, docs) | `gitwiz branch` |
+| Saving progress as you work | `gitwiz commit` |
+| Ready to open a Pull Request | `git push` → open the PR on GitHub |
+| `develop` moved while your PR is open | `gitwiz sync` |
+| Not sure what's going on / what to do next | `gitwiz status` |
+| Made a mistake (bad commit, wrong files, dirty tree) | `gitwiz undo` |
+| Time to ship what's on `develop` | `gitwiz release start` → review → `gitwiz release finish` |
+
+### Step by step
+
+1. **Start a branch** — `gitwiz branch`. Pick the kind of work:
+   - `feature/`, `bugfix/`, `refactor/`, `chore/`, `docs/` branch off **`develop`**.
+   - `hotfix/` branches off **`main`** (urgent production fix).
+
+   gitwiz updates the base branch first, then creates yours and (optionally) pushes it.
+
+2. **Commit as you go** — `gitwiz commit`. It writes [Conventional Commits](https://www.conventionalcommits.org) like `feat:`, `fix:`, `refactor:`. This isn't just style — the commit **type** is what builds your changelog and decides the next version number.
+
+3. **Open a Pull Request** — push your branch (`git push`) and open the PR on GitHub (the push output prints a link). Your team reviews it; on approval it merges into **`develop`**. gitwiz deliberately doesn't manage PRs — GitHub already does that well. gitwiz hands off here and picks back up at release time.
+
+4. **Stay in sync** — if `develop` moves while your PR is open, `gitwiz sync` brings those changes into your branch safely (guided merge or rebase, with auto-stash).
+
+5. **Cut a release** — when `develop` has accumulated enough shipped work:
+   - `gitwiz release start` — choose the bump based on what changed since the last release:
+     - only `fix:` commits → **patch** (`1.2.3 → 1.2.4`)
+     - any `feat:` → **minor** (`1.2.3 → 1.3.0`)
+     - a breaking change → **major** (`1.2.3 → 2.0.0`)
+
+     It bumps `package.json`, regenerates `CHANGELOG.md` from your commits, and opens a `release/x.y.z` branch.
+   - **Review** the generated changelog, run final QA, and commit any last fixes to the release branch.
+   - `gitwiz release finish` — merges the release back, creates the `vX.Y.Z` tag, and pushes. If your CI publishes on tags (see below), the new version ships automatically.
+
+6. **`gitwiz status`** — run it anytime; it tells you where you are and suggests the next step.
+
+> **Where does the release land?** By default gitwiz tags the release on **`develop`** and leaves **`main`** alone — `main` is what you actually deploy to production, updated as a separate step. If you want `release finish` to also merge into `main`, set `"release": { "alsoMergeToMain": true }`.
+
+### What command goes where
+
+```mermaid
+flowchart TD
+    A([New work to do]) --> B["gitwiz branch"]
+    B --> C[Make changes]
+    C --> D["gitwiz commit"]
+    D --> E{More changes?}
+    E -->|Yes| C
+    E -->|No| F["git push → open PR on GitHub"]
+    F --> G{develop moved?}
+    G -->|Yes| H["gitwiz sync"]
+    H --> F
+    G -->|PR approved, merged| I[Work lands in develop]
+    I --> J{Ready to ship?}
+    J -->|Not yet| A
+    J -->|Yes| K["gitwiz release start"]
+    K --> L[Review CHANGELOG + QA]
+    L --> M["gitwiz release finish"]
+    M --> N([CI publishes vX.Y.Z])
+```
+
+### The branch model over time
+
+```mermaid
+gitGraph
+    commit id: "init"
+    branch develop
+    checkout develop
+    commit id: "project setup"
+    branch feature
+    checkout feature
+    commit id: "feat: login form"
+    commit id: "fix: validation"
+    checkout develop
+    merge feature tag: "PR merged"
+    commit id: "feat: dashboard"
+    branch release
+    checkout release
+    commit id: "chore(release): v1.1.0"
+    checkout develop
+    merge release tag: "v1.1.0"
+```
+
+*(`feature` stands in for `feature/login`, `release` for `release/1.1.0`. A `hotfix/` would branch off `main` instead of `develop`.)*
+
 ## Configuration
 
 Run `gitwiz init`, or create `.gitwizrc.json` at your repo root (a `"gitwiz"` key in `package.json` also works):
