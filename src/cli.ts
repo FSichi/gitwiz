@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { branchCommand } from './commands/branch.js';
 import { commitCommand } from './commands/commit.js';
 import { initCommand } from './commands/init.js';
+import { menuCommand } from './commands/menu.js';
 import { releaseFinishCommand } from './commands/release-finish.js';
 import { releaseStartCommand } from './commands/release-start.js';
 import { statusCommand } from './commands/status.js';
@@ -26,8 +27,9 @@ program
   .option('--verbose', 'also echo the read-only git commands gitwiz runs')
   .hook('preAction', (thisCommand, actionCommand) => {
     setVerbose(Boolean(thisCommand.opts().verbose));
+    // The root menu (actionCommand === program) handles its own TTY check.
     // status is the only command safe for scripts/CI; everything else prompts.
-    if (actionCommand.name() !== 'status') assertInteractive();
+    if (actionCommand !== thisCommand && actionCommand.name() !== 'status') assertInteractive();
   });
 
 program
@@ -73,6 +75,15 @@ release
   .command('finish')
   .description('Finish the open release: merge, tag, push and clean up')
   .action(releaseFinishCommand);
+
+// No subcommand: launch the interactive menu in a terminal, or show help otherwise.
+program.action(async () => {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    program.outputHelp();
+    return;
+  }
+  await menuCommand();
+});
 
 try {
   await program.parseAsync();

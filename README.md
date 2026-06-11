@@ -31,6 +31,8 @@ Requires Node.js >= 20 and git. Nothing else — no git-flow binary, no tokens, 
 
 ## Commands
 
+Run `gitwiz` on its own (in a terminal) to open an interactive menu listing everything below — handy when you don't remember the exact command. Or call any command directly:
+
 | Command | What it does |
 |---|---|
 | `gitwiz status` | Where am I and what should I do next? Human-friendly status with suggested next steps. |
