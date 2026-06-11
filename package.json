@@ -14,6 +14,14 @@
   ],
   "license": "MIT",
   "author": "Facundo Sichi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FSichi/gitwiz.git"
+  },
+  "bugs": {
+    "url": "https://github.com/FSichi/gitwiz/issues"
+  },
+  "homepage": "https://github.com/FSichi/gitwiz#readme",
   "type": "module",
   "bin": {
     "gitwiz": "dist/cli.js"
