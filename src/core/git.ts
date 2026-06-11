@@ -23,10 +23,47 @@ function spawnGit(args: string[], opts: GitOptions, stdio: 'inherit' | 'pipe') {
   return result;
 }
 
-/** Run a mutating git command: echoes it (educational) and streams output to the user. */
+// Subcommands whose progress/summary chatter is noise next to gitwiz's own
+// ✔ messages. We pass --quiet to these so the console stays clean.
+const QUIET_SUBCOMMANDS = new Set([
+  'switch',
+  'pull',
+  'push',
+  'fetch',
+  'merge',
+  'rebase',
+  'commit',
+  'stash',
+  'clone',
+]);
+
+// Control modes (e.g. `merge --abort`, `rebase --continue`) reject --quiet.
+const NO_QUIET_FLAGS = ['--abort', '--continue', '--skip', '--quit'];
+
+/**
+ * Append --quiet for noisy subcommands. Skipped when the command already sets a
+ * quiet flag, uses a "--" pathspec separator (where a trailing flag would be
+ * read as a path), or is a control mode that doesn't accept --quiet.
+ */
+function withQuiet(args: string[]): string[] {
+  const sub = args[0];
+  if (
+    sub !== undefined &&
+    QUIET_SUBCOMMANDS.has(sub) &&
+    !args.includes('--') &&
+    !args.includes('--quiet') &&
+    !args.includes('-q') &&
+    !args.some((a) => NO_QUIET_FLAGS.includes(a))
+  ) {
+    return [...args, '--quiet'];
+  }
+  return args;
+}
+
+/** Run a mutating git command: echoes the (clean) command and streams output to the user. */
 export function runGit(args: string[], opts: GitOptions = {}): void {
   echoGitCommand(args);
-  const result = spawnGit(args, opts, 'inherit');
+  const result = spawnGit(withQuiet(args), opts, 'inherit');
   if (result.status !== 0) {
     throw new GitwizError(`git ${args[0]} failed (exit code ${result.status}).`);
   }
@@ -35,7 +72,7 @@ export function runGit(args: string[], opts: GitOptions = {}): void {
 /** Run a mutating git command, returning success instead of throwing. Still echoes. */
 export function tryRunGit(args: string[], opts: GitOptions = {}): boolean {
   echoGitCommand(args);
-  const result = spawnGit(args, opts, 'inherit');
+  const result = spawnGit(withQuiet(args), opts, 'inherit');
   return result.status === 0;
 }
 
