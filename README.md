@@ -20,10 +20,12 @@ $ gitwiz commit
 ## Install
 
 ```bash
-npm install -g gitwiz
+npm install -g @fsichi/gitwiz
 # or run it without installing:
-npx gitwiz status
+npx @fsichi/gitwiz status
 ```
+
+After installing, the command is just `gitwiz` (e.g. `gitwiz status`).
 
 Requires Node.js >= 20 and git. Nothing else — no git-flow binary, no tokens, no setup.
 
