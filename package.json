@@ -1,0 +1,51 @@
+{
+  "name": "gitwiz",
+  "version": "0.1.0",
+  "description": "Friendly git workflow CLI — interactive wizards for branching, commits, releases, sync, and undo",
+  "keywords": [
+    "git",
+    "cli",
+    "workflow",
+    "conventional-commits",
+    "changelog",
+    "wizard",
+    "git-flow",
+    "release"
+  ],
+  "license": "MIT",
+  "author": "Facundo Sichi",
+  "type": "module",
+  "bin": {
+    "gitwiz": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm run build && npm test"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.0.0",
+    "commander": "^14.0.0",
+    "picocolors": "^1.1.0",
+    "semver": "^7.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/semver": "^7.5.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

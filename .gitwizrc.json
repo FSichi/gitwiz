@@ -1,0 +1,5 @@
+{
+  "mainBranch": "main",
+  "developBranch": "main",
+  "tagPrefix": "v"
+}
