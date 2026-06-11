@@ -1,0 +1,4 @@
+# Normalize line endings: store and check out as LF everywhere.
+# Prevents the "LF will be replaced by CRLF" warnings on Windows and keeps
+# the repo consistent across platforms.
+* text=auto eol=lf
