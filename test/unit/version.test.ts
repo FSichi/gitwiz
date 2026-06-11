@@ -16,7 +16,7 @@ describe('bumpPreviews', () => {
 describe('applyVersion', () => {
   const dirs: string[] = [];
   function tempDir(): string {
-    const dir = mkdtempSync(join(tmpdir(), 'wizgit-ver-'));
+    const dir = mkdtempSync(join(tmpdir(), 'gitwiz-ver-'));
     dirs.push(dir);
     return dir;
   }
@@ -71,7 +71,7 @@ describe('applyVersion', () => {
 
 describe('readPackageVersion', () => {
   it('throws a helpful error when package.json is missing', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'wizgit-nopkg-'));
+    const dir = mkdtempSync(join(tmpdir(), 'gitwiz-nopkg-'));
     try {
       expect(() => readPackageVersion(dir)).toThrow(/No package.json/);
     } finally {

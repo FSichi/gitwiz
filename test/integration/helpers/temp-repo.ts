@@ -26,7 +26,7 @@ function execGit(cwd: string, args: string[]): string {
 
 export function createTempRepo(options: { initialCommit?: boolean } = {}): TempRepo {
   const { initialCommit = true } = options;
-  const dir = mkdtempSync(join(tmpdir(), 'wizgit-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'gitwiz-test-'));
 
   const git = (...args: string[]) => execGit(dir, args);
 
@@ -55,7 +55,7 @@ export function createTempRepo(options: { initialCommit?: boolean } = {}): TempR
   }
 
   const addBareOrigin = () => {
-    const bareDir = mkdtempSync(join(tmpdir(), 'wizgit-origin-'));
+    const bareDir = mkdtempSync(join(tmpdir(), 'gitwiz-origin-'));
     execGit(bareDir, ['init', '--bare', '-b', 'main']);
     git('remote', 'add', 'origin', bareDir);
     git('push', '-u', 'origin', 'main');

@@ -27,8 +27,8 @@ describe('release flow end-to-end', () => {
     r.git('branch', 'develop');
     r.git('push', '-u', 'origin', 'develop');
     r.git('switch', 'develop');
-    r.writeFile('.wizgitrc.json', JSON.stringify({ mainBranch: 'main', developBranch: 'develop', tagPrefix: 'v' }, null, 2));
-    r.commit('chore: add wizgit config');
+    r.writeFile('.gitwizrc.json', JSON.stringify({ mainBranch: 'main', developBranch: 'develop', tagPrefix: 'v' }, null, 2));
+    r.commit('chore: add gitwiz config');
     r.commit('feat(auth): add login flow', { 'src/auth.ts': 'export const login = 1;\n' });
     r.commit('fix: handle empty passwords', { 'src/auth.ts': 'export const login = 2;\n' });
     r.git('push');

@@ -12,7 +12,7 @@ import {
   tryCaptureGit,
   tryRunGit,
 } from '../core/git.js';
-import { WizgitError } from '../ui/errors.js';
+import { GitwizError } from '../ui/errors.js';
 import { log } from '../ui/output.js';
 import { confirm, input, select } from '../ui/prompts.js';
 
@@ -21,12 +21,12 @@ export async function branchCommand(): Promise<void> {
   const { config, source } = loadConfig();
   if (source === 'detected') {
     log.dim(
-      `Using auto-detected branches (main: ${config.mainBranch}, work base: ${config.developBranch}). Run "wizgit init" to pin them.`,
+      `Using auto-detected branches (main: ${config.mainBranch}, work base: ${config.developBranch}). Run "gitwiz init" to pin them.`,
     );
   }
 
   if (getCurrentBranch() === '') {
-    throw new WizgitError('You are not on any branch (detached HEAD).', {
+    throw new GitwizError('You are not on any branch (detached HEAD).', {
       hint: `Switch to a branch first: git switch ${config.developBranch}`,
     });
   }
@@ -49,12 +49,12 @@ export async function branchCommand(): Promise<void> {
   const target = `${branchType.prefix}${name}`;
 
   if (localBranchExists(target)) {
-    throw new WizgitError(`Branch "${target}" already exists.`, {
+    throw new GitwizError(`Branch "${target}" already exists.`, {
       hint: `Switch to it with: git switch ${target}`,
     });
   }
   if (tryCaptureGit(['check-ref-format', '--branch', target]) === null) {
-    throw new WizgitError(`"${target}" is not a valid git branch name.`);
+    throw new GitwizError(`"${target}" is not a valid git branch name.`);
   }
 
   // Decide how to handle uncommitted changes before touching the base branch.
@@ -76,20 +76,20 @@ export async function branchCommand(): Promise<void> {
       ],
     });
     if (action === 'abort') {
-      log.dim('Cancelled. Tip: "wizgit commit" can help you commit what you have.');
+      log.dim('Cancelled. Tip: "gitwiz commit" can help you commit what you have.');
       return;
     }
     if (action === 'carry') updateBase = false;
     if (action === 'stash') {
-      runGit(['stash', 'push', '-u', '-m', 'wizgit branch autostash']);
+      runGit(['stash', 'push', '-u', '-m', 'gitwiz branch autostash']);
       stashed = true;
     }
   }
 
   if (updateBase) {
     if (!localBranchExists(base) && !remoteBranchExists(base)) {
-      throw new WizgitError(`Base branch "${base}" does not exist locally or on origin.`, {
-        hint: 'Check your wizgit config or run "wizgit init".',
+      throw new GitwizError(`Base branch "${base}" does not exist locally or on origin.`, {
+        hint: 'Check your gitwiz config or run "gitwiz init".',
       });
     }
     runGit(['switch', base]);
@@ -129,5 +129,5 @@ export async function branchCommand(): Promise<void> {
 
   log.blank();
   log.success(`You are now on ${pc.bold(target)}. Happy hacking!`);
-  log.dim('  Next: make your changes, then run "wizgit commit".');
+  log.dim('  Next: make your changes, then run "gitwiz commit".');
 }
