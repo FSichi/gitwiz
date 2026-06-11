@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import semver from 'semver';
-import { GitwizError } from '../ui/errors.js';
+import { WizgitError } from '../ui/errors.js';
 import { rewriteJson } from './json-file.js';
 
 export interface BumpPreviews {
@@ -12,7 +12,7 @@ export interface BumpPreviews {
 
 export function bumpPreviews(current: string): BumpPreviews {
   const base = semver.valid(current);
-  if (!base) throw new GitwizError(`Current version "${current}" is not valid semver.`);
+  if (!base) throw new WizgitError(`Current version "${current}" is not valid semver.`);
   return {
     major: semver.inc(base, 'major')!,
     minor: semver.inc(base, 'minor')!,
@@ -23,13 +23,13 @@ export function bumpPreviews(current: string): BumpPreviews {
 export function readPackageVersion(repoRoot: string): string {
   const pkgPath = join(repoRoot, 'package.json');
   if (!existsSync(pkgPath)) {
-    throw new GitwizError('No package.json found at the repository root.', {
-      hint: 'gitwiz release currently requires an npm project (version lives in package.json).',
+    throw new WizgitError('No package.json found at the repository root.', {
+      hint: 'wizgit release currently requires an npm project (version lives in package.json).',
     });
   }
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: string };
   if (!pkg.version || !semver.valid(pkg.version)) {
-    throw new GitwizError(`package.json has a missing or invalid "version" (${pkg.version ?? 'none'}).`);
+    throw new WizgitError(`package.json has a missing or invalid "version" (${pkg.version ?? 'none'}).`);
   }
   return pkg.version;
 }
@@ -42,13 +42,13 @@ export function readPackageVersion(repoRoot: string): string {
  */
 export function applyVersion(repoRoot: string, newVersion: string): string[] {
   if (!semver.valid(newVersion)) {
-    throw new GitwizError(`"${newVersion}" is not a valid semver version.`);
+    throw new WizgitError(`"${newVersion}" is not a valid semver version.`);
   }
   const changed: string[] = [];
 
   const pkgPath = join(repoRoot, 'package.json');
   if (!existsSync(pkgPath)) {
-    throw new GitwizError('No package.json found at the repository root.');
+    throw new WizgitError('No package.json found at the repository root.');
   }
   rewriteJson(pkgPath, (pkg) => {
     pkg.version = newVersion;

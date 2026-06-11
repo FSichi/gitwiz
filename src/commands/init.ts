@@ -77,10 +77,10 @@ export async function initCommand(): Promise<void> {
   let destination: 'rc' | 'package.json' = 'rc';
   if (existsSync(pkgPath)) {
     destination = await select({
-      message: 'Where should the gitwiz config be saved?',
+      message: 'Where should the wizgit config be saved?',
       choices: [
         { name: `${RC_FILENAME} ${pc.dim('(recommended — its own file)')}`, value: 'rc' as const },
-        { name: 'package.json ("gitwiz" key)', value: 'package.json' as const },
+        { name: 'package.json ("wizgit" key)', value: 'package.json' as const },
       ],
     });
   }
@@ -90,9 +90,9 @@ export async function initCommand(): Promise<void> {
     log.success(`Saved ${RC_FILENAME}`);
   } else {
     rewriteJson(pkgPath, (pkg) => {
-      pkg.gitwiz = settings;
+      pkg.wizgit = settings;
     });
-    log.success('Saved "gitwiz" key in package.json');
+    log.success('Saved "wizgit" key in package.json');
   }
 
   log.blank();
@@ -101,5 +101,5 @@ export async function initCommand(): Promise<void> {
   log.info(`  Work base branch:   ${pc.cyan(developBranch)}`);
   log.info(`  Release tags:       ${pc.cyan(`${tagPrefix}1.2.3`)}`);
   log.blank();
-  log.dim('  Next: run "gitwiz branch" to start working, or "gitwiz status" anytime you feel lost.');
+  log.dim('  Next: run "wizgit branch" to start working, or "wizgit status" anytime you feel lost.');
 }

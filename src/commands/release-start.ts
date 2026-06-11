@@ -5,7 +5,7 @@ import semver from 'semver';
 import { mergeChangelog } from '../core/changelog/merge.js';
 import { collectCommitsSince, findLastTag } from '../core/changelog/parse.js';
 import { parseRepoWebUrl, renderReleaseSection } from '../core/changelog/render.js';
-import { loadConfig, type GitwizConfig } from '../core/config.js';
+import { loadConfig, type WizgitConfig } from '../core/config.js';
 import {
   captureGit,
   ensureGitRepo,
@@ -19,7 +19,7 @@ import {
   type GitOptions,
 } from '../core/git.js';
 import { applyVersion, bumpPreviews, readPackageVersion } from '../core/version.js';
-import { GitwizError } from '../ui/errors.js';
+import { WizgitError } from '../ui/errors.js';
 import { log } from '../ui/output.js';
 import { input, select } from '../ui/prompts.js';
 
@@ -42,14 +42,14 @@ function listRemoteReleaseBranches(opts: GitOptions = {}): string[] {
 export function assertNoOpenRelease(opts: GitOptions = {}): void {
   const local = listLocalReleaseBranches(opts);
   if (local.length > 0) {
-    throw new GitwizError(`A release is already in progress: ${local[0]}`, {
-      hint: 'Finish it with "gitwiz release finish" (or delete the branch) before starting a new one.',
+    throw new WizgitError(`A release is already in progress: ${local[0]}`, {
+      hint: 'Finish it with "wizgit release finish" (or delete the branch) before starting a new one.',
     });
   }
   if (hasRemote(opts)) {
     const remote = listRemoteReleaseBranches(opts);
     if (remote.length > 0) {
-      throw new GitwizError(`A release branch already exists on origin: ${remote[0]}`, {
+      throw new WizgitError(`A release branch already exists on origin: ${remote[0]}`, {
         hint: 'Someone may have a release in progress. Finish or delete it first.',
       });
     }
@@ -65,7 +65,7 @@ function today(): string {
 
 /** Non-interactive release start — switches to develop, branches, bumps, writes the changelog, commits. */
 export function performReleaseStart(
-  config: GitwizConfig,
+  config: WizgitConfig,
   version: string,
   opts: GitOptions = {},
 ): { branch: string; changelogPath: string } {
@@ -109,8 +109,8 @@ export async function releaseStartCommand(): Promise<void> {
   const { config, repoRoot } = loadConfig();
 
   if (!isWorkingTreeClean()) {
-    throw new GitwizError('You have uncommitted changes.', {
-      hint: 'Commit them ("gitwiz commit") or stash them before starting a release.',
+    throw new WizgitError('You have uncommitted changes.', {
+      hint: 'Commit them ("wizgit commit") or stash them before starting a release.',
     });
   }
   assertNoOpenRelease();
@@ -148,5 +148,5 @@ export async function releaseStartCommand(): Promise<void> {
   log.success(`Release branch ${pc.bold(branch)} created — version bumped to ${version}.`);
   log.info('  Next steps:');
   log.info(`    1. Review ${config.release.changelogFile} (commit any edits to this branch).`);
-  log.info(`    2. When everything looks good, run ${pc.bold('gitwiz release finish')}.`);
+  log.info(`    2. When everything looks good, run ${pc.bold('wizgit release finish')}.`);
 }

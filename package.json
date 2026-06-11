@@ -1,5 +1,5 @@
 {
-  "name": "gitwiz",
+  "name": "wizgit",
   "version": "0.1.0",
   "description": "Friendly git workflow CLI — interactive wizards for branching, commits, releases, sync, and undo",
   "keywords": [
@@ -16,15 +16,15 @@
   "author": "Facundo Sichi",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FSichi/gitwiz.git"
+    "url": "git+https://github.com/FSichi/wizgit.git"
   },
   "bugs": {
-    "url": "https://github.com/FSichi/gitwiz/issues"
+    "url": "https://github.com/FSichi/wizgit/issues"
   },
-  "homepage": "https://github.com/FSichi/gitwiz#readme",
+  "homepage": "https://github.com/FSichi/wizgit#readme",
   "type": "module",
   "bin": {
-    "gitwiz": "dist/cli.js"
+    "wizgit": "dist/cli.js"
   },
   "files": [
     "dist"

@@ -1,5 +1,5 @@
 import pc from 'picocolors';
-import { baseBranchFor, loadConfig, type GitwizConfig } from '../core/config.js';
+import { baseBranchFor, loadConfig, type WizgitConfig } from '../core/config.js';
 import {
   ensureGitRepo,
   getAheadBehind,
@@ -12,13 +12,13 @@ import {
   runGit,
   tryRunGit,
 } from '../core/git.js';
-import { GitwizError } from '../ui/errors.js';
+import { WizgitError } from '../ui/errors.js';
 import { log } from '../ui/output.js';
 import { confirm, select } from '../ui/prompts.js';
 
-const STASH_MESSAGE = 'gitwiz sync autostash';
+const STASH_MESSAGE = 'wizgit sync autostash';
 
-function findBaseBranch(branch: string, config: GitwizConfig): string | null {
+function findBaseBranch(branch: string, config: WizgitConfig): string | null {
   for (const type of config.branchTypes) {
     if (branch.startsWith(type.prefix)) return baseBranchFor(type, config);
   }
@@ -27,10 +27,10 @@ function findBaseBranch(branch: string, config: GitwizConfig): string | null {
   return config.developBranch;
 }
 
-function conflictError(operation: 'merge' | 'rebase', stashed: boolean): GitwizError {
+function conflictError(operation: 'merge' | 'rebase', stashed: boolean): WizgitError {
   const lines = [
     `The ${operation} stopped because of conflicts. This is normal — git needs your help:`,
-    '  1. Open the conflicted files (run "gitwiz status" to list them) and fix the marked sections.',
+    '  1. Open the conflicted files (run "wizgit status" to list them) and fix the marked sections.',
     '  2. Stage the fixed files:  git add <file>',
     `  3. Continue with:          git ${operation} --continue`,
     `  Or undo everything with:   git ${operation} --abort`,
@@ -38,7 +38,7 @@ function conflictError(operation: 'merge' | 'rebase', stashed: boolean): GitwizE
   if (stashed) {
     lines.push(`  Note: your local changes are stashed — recover them later with: git stash pop`);
   }
-  return new GitwizError(lines.join('\n'));
+  return new WizgitError(lines.join('\n'));
 }
 
 export async function syncCommand(): Promise<void> {
@@ -47,7 +47,7 @@ export async function syncCommand(): Promise<void> {
 
   const current = getCurrentBranch();
   if (current === '') {
-    throw new GitwizError('You are not on any branch (detached HEAD).', {
+    throw new WizgitError('You are not on any branch (detached HEAD).', {
       hint: `Switch to a branch first: git switch ${config.developBranch}`,
     });
   }
@@ -187,7 +187,7 @@ export async function syncCommand(): Promise<void> {
       runGit(['switch', base!]);
       if (!tryRunGit(['pull', '--ff-only', 'origin', base!])) {
         runGit(['switch', current]);
-        throw new GitwizError(`Could not fast-forward ${base} — it has diverged from origin.`);
+        throw new WizgitError(`Could not fast-forward ${base} — it has diverged from origin.`);
       }
       runGit(['switch', current]);
       log.success(`Local ${base} is now up to date.`);
@@ -196,8 +196,8 @@ export async function syncCommand(): Promise<void> {
     case 'pull-own': {
       if (!tryRunGit(['pull', '--ff-only'])) {
         popStash();
-        throw new GitwizError('Could not fast-forward — your branch and its remote have diverged.', {
-          hint: 'Run "gitwiz sync" again and choose merge or rebase against the base, or ask a teammate for help.',
+        throw new WizgitError('Could not fast-forward — your branch and its remote have diverged.', {
+          hint: 'Run "wizgit sync" again and choose merge or rebase against the base, or ask a teammate for help.',
         });
       }
       popStash();

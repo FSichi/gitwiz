@@ -1,5 +1,5 @@
 import pc from 'picocolors';
-import { loadConfig, type GitwizConfig } from '../core/config.js';
+import { loadConfig, type WizgitConfig } from '../core/config.js';
 import {
   captureGit,
   ensureGitRepo,
@@ -13,25 +13,25 @@ import {
   tryRunGit,
   type GitOptions,
 } from '../core/git.js';
-import { GitwizError } from '../ui/errors.js';
+import { WizgitError } from '../ui/errors.js';
 import { log } from '../ui/output.js';
 import { confirm, select } from '../ui/prompts.js';
 
-function mergeConflictError(target: string): GitwizError {
-  return new GitwizError(
+function mergeConflictError(target: string): WizgitError {
+  return new WizgitError(
     [
       `The merge into ${target} stopped because of conflicts:`,
-      '  1. Fix the conflicted files ("gitwiz status" lists them).',
+      '  1. Fix the conflicted files ("wizgit status" lists them).',
       '  2. Stage them:    git add <file>',
       '  3. Continue with: git merge --continue',
-      '  Or undo with:     git merge --abort  (then run "gitwiz release finish" again)',
+      '  Or undo with:     git merge --abort  (then run "wizgit release finish" again)',
     ].join('\n'),
   );
 }
 
 /** Non-interactive release finish — merges, tags, pushes, deletes the release branch. */
 export function performReleaseFinish(
-  config: GitwizConfig,
+  config: WizgitConfig,
   version: string,
   opts: GitOptions = {},
 ): { tag: string } {
@@ -41,7 +41,7 @@ export function performReleaseFinish(
 
   // Pre-flight: never merge first and fail at the tag.
   if (tagExists(tag, opts)) {
-    throw new GitwizError(`Tag "${tag}" already exists.`, {
+    throw new WizgitError(`Tag "${tag}" already exists.`, {
       hint: 'This version seems to be released already. Delete the tag or pick another version.',
     });
   }
@@ -109,8 +109,8 @@ export async function releaseFinishCommand(): Promise<void> {
   }
 
   if (releases.length === 0) {
-    throw new GitwizError('No release branch found.', {
-      hint: 'Start one with "gitwiz release start".',
+    throw new WizgitError('No release branch found.', {
+      hint: 'Start one with "wizgit release start".',
     });
   }
 
@@ -125,7 +125,7 @@ export async function releaseFinishCommand(): Promise<void> {
   const tag = `${config.tagPrefix}${version}`;
 
   if (tagExists(tag)) {
-    throw new GitwizError(`Tag "${tag}" already exists.`, {
+    throw new WizgitError(`Tag "${tag}" already exists.`, {
       hint: 'This version seems to be released already.',
     });
   }

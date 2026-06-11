@@ -2,7 +2,7 @@ import pc from 'picocolors';
 import { loadConfig } from '../core/config.js';
 import { buildCommitHeader, buildCommitMessage, normalizeScope } from '../core/commit-message.js';
 import { captureGit, ensureGitRepo, runGit } from '../core/git.js';
-import { GitwizError } from '../ui/errors.js';
+import { WizgitError } from '../ui/errors.js';
 import { box, log } from '../ui/output.js';
 import { checkbox, confirm, input, select } from '../ui/prompts.js';
 
@@ -107,9 +107,9 @@ export async function commitCommand(): Promise<void> {
   try {
     runGit(['commit', '-m', message]);
   } catch (err) {
-    if (err instanceof GitwizError) {
-      throw new GitwizError('The commit was rejected (a git hook may have failed).', {
-        hint: 'Fix the reported issue and run "gitwiz commit" again.',
+    if (err instanceof WizgitError) {
+      throw new WizgitError('The commit was rejected (a git hook may have failed).', {
+        hint: 'Fix the reported issue and run "wizgit commit" again.',
       });
     }
     throw err;

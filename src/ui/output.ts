@@ -43,7 +43,7 @@ function formatArgs(args: string[]): string {
   return args.map((a) => (/[\s"']/.test(a) ? JSON.stringify(a) : a)).join(' ');
 }
 
-/** Print the git command about to run — users learn git by seeing what gitwiz does. */
+/** Print the git command about to run — users learn git by seeing what wizgit does. */
 export function echoGitCommand(args: string[]): void {
   console.log(pc.dim(`  $ git ${formatArgs(args)}`));
 }

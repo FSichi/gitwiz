@@ -32,19 +32,19 @@ describe('loadConfig', () => {
     expect(config.developBranch).toBe('development');
   });
 
-  it('.gitwizrc.json wins over detection', () => {
+  it('.wizgitrc.json wins over detection', () => {
     const r = repo();
     r.git('branch', 'develop');
-    r.writeFile('.gitwizrc.json', JSON.stringify({ mainBranch: 'main', developBranch: 'integration', tagPrefix: '' }));
+    r.writeFile('.wizgitrc.json', JSON.stringify({ mainBranch: 'main', developBranch: 'integration', tagPrefix: '' }));
     const { config, source } = loadConfig({ cwd: r.dir });
     expect(source).toBe('rc');
     expect(config.developBranch).toBe('integration');
     expect(config.tagPrefix).toBe('');
   });
 
-  it('package.json "gitwiz" key is used when no rc file exists', () => {
+  it('package.json "wizgit" key is used when no rc file exists', () => {
     const r = repo();
-    r.writeFile('package.json', JSON.stringify({ name: 'x', version: '1.0.0', gitwiz: { developBranch: 'work' } }));
+    r.writeFile('package.json', JSON.stringify({ name: 'x', version: '1.0.0', wizgit: { developBranch: 'work' } }));
     const { config, source } = loadConfig({ cwd: r.dir });
     expect(source).toBe('package.json');
     expect(config.developBranch).toBe('work');
@@ -55,7 +55,7 @@ describe('loadConfig', () => {
 
   it('partial config keeps defaults for the rest', () => {
     const r = repo();
-    r.writeFile('.gitwizrc.json', JSON.stringify({ tagPrefix: '' }));
+    r.writeFile('.wizgitrc.json', JSON.stringify({ tagPrefix: '' }));
     const { config } = loadConfig({ cwd: r.dir });
     expect(config.tagPrefix).toBe('');
     expect(config.commitTypes.some((t) => t.type === 'feat')).toBe(true);
@@ -64,13 +64,13 @@ describe('loadConfig', () => {
 
   it('rejects invalid config with the offending path', () => {
     const r = repo();
-    r.writeFile('.gitwizrc.json', JSON.stringify({ mainBranch: 42 }));
+    r.writeFile('.wizgitrc.json', JSON.stringify({ mainBranch: 42 }));
     expect(() => loadConfig({ cwd: r.dir })).toThrow(/"mainBranch" must be a string/);
   });
 
   it('rejects unparseable rc files', () => {
     const r = repo();
-    r.writeFile('.gitwizrc.json', '{ not json');
+    r.writeFile('.wizgitrc.json', '{ not json');
     expect(() => loadConfig({ cwd: r.dir })).toThrow(/Could not parse/);
   });
 });

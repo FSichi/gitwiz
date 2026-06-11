@@ -9,7 +9,7 @@ import { releaseStartCommand } from './commands/release-start.js';
 import { statusCommand } from './commands/status.js';
 import { syncCommand } from './commands/sync.js';
 import { undoCommand } from './commands/undo.js';
-import { GitwizError } from './ui/errors.js';
+import { WizgitError } from './ui/errors.js';
 import { log, setVerbose } from './ui/output.js';
 import { assertInteractive } from './ui/prompts.js';
 
@@ -20,10 +20,10 @@ const pkg = JSON.parse(
 const program = new Command();
 
 program
-  .name('gitwiz')
+  .name('wizgit')
   .description('Friendly git workflows — wizards for branching, commits, releases, sync, and undo')
   .version(pkg.version)
-  .option('--verbose', 'also echo the read-only git commands gitwiz runs')
+  .option('--verbose', 'also echo the read-only git commands wizgit runs')
   .hook('preAction', (thisCommand, actionCommand) => {
     setVerbose(Boolean(thisCommand.opts().verbose));
     // status is the only command safe for scripts/CI; everything else prompts.
@@ -32,7 +32,7 @@ program
 
 program
   .command('init')
-  .description('Set up gitwiz in this repository (branches, tag prefix)')
+  .description('Set up wizgit in this repository (branches, tag prefix)')
   .action(initCommand);
 
 program
@@ -81,7 +81,7 @@ try {
     log.dim('Cancelled.');
     process.exit(130);
   }
-  if (err instanceof GitwizError) {
+  if (err instanceof WizgitError) {
     log.error(err.message);
     if (err.hint) log.dim(`  ${err.hint}`);
     process.exit(1);

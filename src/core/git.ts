@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { GitwizError } from '../ui/errors.js';
+import { WizgitError } from '../ui/errors.js';
 import { echoGitCommand, isVerbose } from '../ui/output.js';
 
 export interface GitOptions {
@@ -16,7 +16,7 @@ function spawnGit(args: string[], opts: GitOptions, stdio: 'inherit' | 'pipe') {
     // No shell — args are passed verbatim, immune to quoting/injection issues.
   });
   if (result.error) {
-    throw new GitwizError(`Could not run git: ${result.error.message}`, {
+    throw new WizgitError(`Could not run git: ${result.error.message}`, {
       hint: 'Is git installed and on your PATH?',
     });
   }
@@ -28,7 +28,7 @@ export function runGit(args: string[], opts: GitOptions = {}): void {
   echoGitCommand(args);
   const result = spawnGit(args, opts, 'inherit');
   if (result.status !== 0) {
-    throw new GitwizError(`git ${args[0]} failed (exit code ${result.status}).`);
+    throw new WizgitError(`git ${args[0]} failed (exit code ${result.status}).`);
   }
 }
 
@@ -45,7 +45,7 @@ export function captureGit(args: string[], opts: GitOptions = {}): string {
   const result = spawnGit(args, opts, 'pipe');
   if (result.status !== 0) {
     const stderr = (result.stderr ?? '').trim();
-    throw new GitwizError(`git ${args.join(' ')} failed${stderr ? `: ${stderr}` : '.'}`);
+    throw new WizgitError(`git ${args.join(' ')} failed${stderr ? `: ${stderr}` : '.'}`);
   }
   return (result.stdout ?? '').trim();
 }
@@ -68,8 +68,8 @@ export function isGitRepo(opts: GitOptions = {}): boolean {
 
 export function ensureGitRepo(opts: GitOptions = {}): void {
   if (!isGitRepo(opts)) {
-    throw new GitwizError('This folder is not a git repository.', {
-      hint: 'Move into your project folder, or run "gitwiz init" to set one up.',
+    throw new WizgitError('This folder is not a git repository.', {
+      hint: 'Move into your project folder, or run "wizgit init" to set one up.',
     });
   }
 }

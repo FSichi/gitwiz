@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { GitwizError } from '../ui/errors.js';
+import { WizgitError } from '../ui/errors.js';
 import {
   getRepoRoot,
   localBranchExists,
@@ -24,7 +24,7 @@ export interface CommitType {
   changelogSection: string | false;
 }
 
-export interface GitwizConfig {
+export interface WizgitConfig {
   mainBranch: string;
   developBranch: string;
   tagPrefix: string;
@@ -39,12 +39,12 @@ export interface GitwizConfig {
 export type ConfigSource = 'rc' | 'package.json' | 'detected';
 
 export interface ResolvedConfig {
-  config: GitwizConfig;
+  config: WizgitConfig;
   source: ConfigSource;
   repoRoot: string;
 }
 
-export const RC_FILENAME = '.gitwizrc.json';
+export const RC_FILENAME = '.wizgitrc.json';
 
 export const DEFAULT_BRANCH_TYPES: BranchType[] = [
   { type: 'feature', prefix: 'feature/', description: 'New functionality', base: 'develop' },
@@ -68,7 +68,7 @@ export const DEFAULT_COMMIT_TYPES: CommitType[] = [
   { type: 'build', emoji: '📦', description: 'Build system or dependencies', changelogSection: false },
 ];
 
-function builtinDefaults(): GitwizConfig {
+function builtinDefaults(): WizgitConfig {
   return {
     mainBranch: 'main',
     developBranch: 'main',
@@ -109,15 +109,15 @@ export function detectDevelopBranch(mainBranch: string, opts: GitOptions = {}): 
 // ---------------------------------------------------------------------------
 
 function fail(path: string, expected: string): never {
-  throw new GitwizError(`Invalid gitwiz config: "${path}" must be ${expected}.`);
+  throw new WizgitError(`Invalid wizgit config: "${path}" must be ${expected}.`);
 }
 
-function validateUserConfig(raw: unknown, origin: string): Partial<GitwizConfig> {
+function validateUserConfig(raw: unknown, origin: string): Partial<WizgitConfig> {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-    throw new GitwizError(`Invalid gitwiz config in ${origin}: expected an object.`);
+    throw new WizgitError(`Invalid wizgit config in ${origin}: expected an object.`);
   }
   const cfg = raw as Record<string, unknown>;
-  const out: Partial<GitwizConfig> = {};
+  const out: Partial<WizgitConfig> = {};
 
   for (const key of ['mainBranch', 'developBranch', 'tagPrefix'] as const) {
     if (cfg[key] !== undefined) {
@@ -186,7 +186,7 @@ function validateUserConfig(raw: unknown, origin: string): Partial<GitwizConfig>
 }
 
 // ---------------------------------------------------------------------------
-// Resolution: .gitwizrc.json → package.json "gitwiz" key → detection → defaults
+// Resolution: .wizgitrc.json → package.json "wizgit" key → detection → defaults
 // ---------------------------------------------------------------------------
 
 function readUserConfig(repoRoot: string): { raw: unknown; source: ConfigSource } | null {
@@ -195,16 +195,16 @@ function readUserConfig(repoRoot: string): { raw: unknown; source: ConfigSource 
     try {
       return { raw: JSON.parse(readFileSync(rcPath, 'utf8')), source: 'rc' };
     } catch (err) {
-      throw new GitwizError(`Could not parse ${RC_FILENAME}: ${(err as Error).message}`);
+      throw new WizgitError(`Could not parse ${RC_FILENAME}: ${(err as Error).message}`);
     }
   }
   const pkgPath = join(repoRoot, 'package.json');
   if (existsSync(pkgPath)) {
     try {
       const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>;
-      if (pkg.gitwiz !== undefined) return { raw: pkg.gitwiz, source: 'package.json' };
+      if (pkg.wizgit !== undefined) return { raw: pkg.wizgit, source: 'package.json' };
     } catch {
-      // A broken package.json is not gitwiz's problem to report here.
+      // A broken package.json is not wizgit's problem to report here.
     }
   }
   return null;
@@ -216,7 +216,7 @@ export function loadConfig(opts: GitOptions = {}): ResolvedConfig {
 
   const user = readUserConfig(repoRoot);
   const userConfig = user
-    ? validateUserConfig(user.raw, user.source === 'rc' ? RC_FILENAME : 'package.json "gitwiz" key')
+    ? validateUserConfig(user.raw, user.source === 'rc' ? RC_FILENAME : 'package.json "wizgit" key')
     : {};
 
   config.mainBranch = userConfig.mainBranch ?? detectMainBranch(opts);
@@ -231,6 +231,6 @@ export function loadConfig(opts: GitOptions = {}): ResolvedConfig {
 }
 
 /** Base branch (actual name) for a given branch type. */
-export function baseBranchFor(branchType: BranchType, config: GitwizConfig): string {
+export function baseBranchFor(branchType: BranchType, config: WizgitConfig): string {
   return branchType.base === 'main' ? config.mainBranch : config.developBranch;
 }
