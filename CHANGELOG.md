@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0](https://github.com/FSichi/gitwiz/compare/v0.3.0...v0.4.0) (2026-06-11)
+
+### Features
+
+* AI-agent support via AGENTS.md and non-interactive command flags ([0feffea](https://github.com/FSichi/gitwiz/commit/0feffea254a4522bc213856f143d9ef2affae51e))
+
 ## [0.3.0](https://github.com/FSichi/gitwiz/compare/v0.2.1...v0.3.0) (2026-06-11)
 
 _No notable changes._
