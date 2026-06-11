@@ -188,6 +188,48 @@ gitGraph
 
 *(`feature` stands in for `feature/login`, `release` for `release/1.1.0`. The tags show where each step deploys. This assumes `alsoMergeToMain: true` so releases land on `main`; a `hotfix/` would branch off `main` instead of `develop`.)*
 
+### Fixing a bug found during a release
+
+Once `gitwiz release start` has created `release/x.y.z` and deployed it to Staging, QA may find a bug that must ship in **this** release. The fix goes **on the release branch itself** — not on a new branch off `develop`. `gitwiz release finish` then carries it back into `develop` (and `main`), so you write the fix once and it lands everywhere.
+
+Say you're releasing **1.2.0** (a login feature) and QA finds that login accepts empty passwords:
+
+1. You're already on `release/1.2.0` after `release start`. Fix the code, then commit it **to the release branch**:
+   ```bash
+   gitwiz commit          # fix(auth): reject empty passwords
+   git push               # re-deploys release/1.2.0 to Staging
+   ```
+2. QA re-tests on Staging and approves.
+3. `gitwiz release finish` merges `release/1.2.0` into `develop` **and** `main`, tags `v1.2.0`, and deletes the branch.
+
+Result: production (`main`) and `develop` both have the login feature **and** the fix — so the bug can't reappear in future work. You never had to apply the fix in two places.
+
+```mermaid
+gitGraph
+    commit id: "v1.1.0"
+    branch develop
+    checkout develop
+    commit id: "feat: login (PR merged)"
+    branch release
+    checkout release
+    commit id: "chore(release): v1.2.0" tag: "deploy → Staging"
+    commit id: "fix: empty passwords" tag: "redeploy → Staging"
+    checkout main
+    merge release tag: "v1.2.0 → Production"
+    checkout develop
+    merge release
+```
+
+**Where does a fix go?**
+
+| Situation | Put the fix on |
+|---|---|
+| Bug in the release you're stabilizing (found in Staging) | the `release/x.y.z` branch → `finish` carries it to `develop` + `main` |
+| Unrelated feature/fix while a release is open | a normal `gitwiz branch` off `develop` (ships in the *next* release) |
+| Bug already live in production (no open release) | a `hotfix/` branch off `main` |
+
+> If `develop` moved on while the release was open, the `release finish` merge into `develop` may surface conflicts — gitwiz shows them with step-by-step instructions instead of failing silently.
+
 ## Configuration
 
 Run `gitwiz init`, or create `.gitwizrc.json` at your repo root (a `"gitwiz"` key in `package.json` also works):
