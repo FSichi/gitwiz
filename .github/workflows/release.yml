@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags: ['v*']
-  workflow_dispatch: # allow manual runs while testing trusted publishing
+  workflow_dispatch: # allow manual re-publish of the current version
 
 permissions:
   contents: read
@@ -19,18 +19,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm install -g npm@latest # Trusted Publishing needs npm >= 11.5.1
-      - name: Diagnostics
-        run: |
-          echo "node: $(node -v)"
-          echo "npm:  $(npm -v)"
-          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
-            echo "OIDC token endpoint: available"
-          else
-            echo "OIDC token endpoint: MISSING (id-token permission not effective)"
-          fi
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
-      # Auth comes from GitHub's OIDC token via Trusted Publishing (no NPM_TOKEN).
+      # No NPM_TOKEN: auth comes from GitHub's OIDC token via Trusted Publishing,
+      # configured at npmjs.com → @fsichi/gitwiz → Settings → Trusted Publisher.
       - run: npm publish --provenance --access public
