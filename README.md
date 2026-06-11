@@ -118,7 +118,27 @@ Work branches are created from `develop` (except `hotfix/`, which branches from 
 
 6. **`gitwiz status`** — run it anytime; it tells you where you are and suggests the next step.
 
-> **Where does the release land?** By default gitwiz tags the release on **`develop`** and leaves **`main`** alone — `main` is what you actually deploy to production, updated as a separate step. If you want `release finish` to also merge into `main`, set `"release": { "alsoMergeToMain": true }`.
+### Environments
+
+The branch model maps cleanly onto three deploy environments — wire each branch to one in your CI and deploys happen automatically:
+
+| Environment | Deploys from | Updated when |
+|---|---|---|
+| 🧪 **Development** | `develop` | a PR is merged into `develop` |
+| 🔬 **Staging** (QA / UAT) | `release/x.y.z` | you run `gitwiz release start` |
+| 🚀 **Production** | `main` + tag `vX.Y.Z` | you run `gitwiz release finish` |
+
+The `release/x.y.z` branch **is** your release candidate, so it's exactly what Staging should run while you do final QA. For Production to track `main`, set `"release": { "alsoMergeToMain": true }` so `release finish` merges into `main` (the default tags on `develop` and leaves `main` for you to deploy manually).
+
+```mermaid
+flowchart LR
+    FB["feature/* · bugfix/*"] -->|PR merged| DV["develop"]
+    DV -->|auto-deploy| ENVD(["🧪 Development"])
+    DV -->|gitwiz release start| RL["release/x.y.z"]
+    RL -->|auto-deploy| ENVS(["🔬 Staging / QA"])
+    RL -->|gitwiz release finish| MN["main + tag vX.Y.Z"]
+    MN -->|auto-deploy| ENVP(["🚀 Production"])
+```
 
 ### What command goes where
 
@@ -146,7 +166,7 @@ flowchart TD
 
 ```mermaid
 gitGraph
-    commit id: "init"
+    commit id: "v1.0.0"
     branch develop
     checkout develop
     commit id: "project setup"
@@ -155,16 +175,18 @@ gitGraph
     commit id: "feat: login form"
     commit id: "fix: validation"
     checkout develop
-    merge feature tag: "PR merged"
+    merge feature tag: "→ Development"
     commit id: "feat: dashboard"
     branch release
     checkout release
-    commit id: "chore(release): v1.1.0"
+    commit id: "chore(release): v1.1.0" tag: "→ Staging"
+    checkout main
+    merge release tag: "v1.1.0 → Production"
     checkout develop
-    merge release tag: "v1.1.0"
+    merge release
 ```
 
-*(`feature` stands in for `feature/login`, `release` for `release/1.1.0`. A `hotfix/` would branch off `main` instead of `develop`.)*
+*(`feature` stands in for `feature/login`, `release` for `release/1.1.0`. The tags show where each step deploys. This assumes `alsoMergeToMain: true` so releases land on `main`; a `hotfix/` would branch off `main` instead of `develop`.)*
 
 ## Configuration
 
