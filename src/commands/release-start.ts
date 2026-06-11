@@ -21,7 +21,7 @@ import {
 import { applyVersion, bumpPreviews, readPackageVersion } from '../core/version.js';
 import { GitwizError } from '../ui/errors.js';
 import { log } from '../ui/output.js';
-import { input, select } from '../ui/prompts.js';
+import { assertInteractive, input, select } from '../ui/prompts.js';
 
 function listLocalReleaseBranches(opts: GitOptions = {}): string[] {
   return captureGit(['branch', '--list', 'release/*', '--format=%(refname:short)'], opts)
@@ -104,7 +104,14 @@ export function performReleaseStart(
   return { branch, changelogPath };
 }
 
-export async function releaseStartCommand(): Promise<void> {
+export interface ReleaseStartOptions {
+  major?: boolean;
+  minor?: boolean;
+  patch?: boolean;
+  version?: string;
+}
+
+export async function releaseStartCommand(opts: ReleaseStartOptions = {}): Promise<void> {
   ensureGitRepo();
   const { config, repoRoot } = loadConfig();
 
@@ -118,28 +125,41 @@ export async function releaseStartCommand(): Promise<void> {
   const current = readPackageVersion(repoRoot);
   const previews = bumpPreviews(current);
 
-  const choice = await select({
-    message: `Current version is ${pc.bold(current)}. What kind of release is this?`,
-    choices: [
-      { name: `patch  ${pc.dim(`bug fixes only          ${current} → ${previews.patch}`)}`, value: previews.patch },
-      { name: `minor  ${pc.dim(`new features            ${current} → ${previews.minor}`)}`, value: previews.minor },
-      { name: `major  ${pc.dim(`breaking changes        ${current} → ${previews.major}`)}`, value: previews.major },
-      { name: `custom ${pc.dim('type a version yourself')}`, value: 'custom' },
-    ],
-  });
+  // Non-interactive: a bump flag or explicit version picks it without prompting.
+  let version: string | undefined;
+  if (opts.version) {
+    if (!semver.valid(opts.version)) throw new GitwizError(`"${opts.version}" is not a valid semver version.`);
+    if (!semver.gt(opts.version, current)) {
+      throw new GitwizError(`Version ${opts.version} must be greater than the current ${current}.`);
+    }
+    version = opts.version;
+  } else if (opts.major) version = previews.major;
+  else if (opts.minor) version = previews.minor;
+  else if (opts.patch) version = previews.patch;
 
-  let version: string;
-  if (choice === 'custom') {
-    version = await input({
-      message: 'New version:',
-      validate: (value) => {
-        if (!semver.valid(value)) return 'Not a valid semver version (e.g. 1.4.0).';
-        if (!semver.gt(value, current)) return `Must be greater than the current version (${current}).`;
-        return true;
-      },
+  if (version === undefined) {
+    assertInteractive();
+    const choice = await select({
+      message: `Current version is ${pc.bold(current)}. What kind of release is this?`,
+      choices: [
+        { name: `patch  ${pc.dim(`bug fixes only          ${current} → ${previews.patch}`)}`, value: previews.patch },
+        { name: `minor  ${pc.dim(`new features            ${current} → ${previews.minor}`)}`, value: previews.minor },
+        { name: `major  ${pc.dim(`breaking changes        ${current} → ${previews.major}`)}`, value: previews.major },
+        { name: `custom ${pc.dim('type a version yourself')}`, value: 'custom' },
+      ],
     });
-  } else {
-    version = choice;
+    if (choice === 'custom') {
+      version = await input({
+        message: 'New version:',
+        validate: (value) => {
+          if (!semver.valid(value)) return 'Not a valid semver version (e.g. 1.4.0).';
+          if (!semver.gt(value, current)) return `Must be greater than the current version (${current}).`;
+          return true;
+        },
+      });
+    } else {
+      version = choice;
+    }
   }
 
   const { branch } = performReleaseStart(config, version);

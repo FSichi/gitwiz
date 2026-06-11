@@ -12,7 +12,6 @@ import { syncCommand } from './commands/sync.js';
 import { undoCommand } from './commands/undo.js';
 import { GitwizError } from './ui/errors.js';
 import { log, setVerbose } from './ui/output.js';
-import { assertInteractive } from './ui/prompts.js';
 
 const pkg = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
@@ -25,11 +24,9 @@ program
   .description('Friendly git workflows — wizards for branching, commits, releases, sync, and undo')
   .version(pkg.version)
   .option('--verbose', 'also echo the read-only git commands gitwiz runs')
-  .hook('preAction', (thisCommand, actionCommand) => {
+  .hook('preAction', (thisCommand) => {
     setVerbose(Boolean(thisCommand.opts().verbose));
-    // The root menu (actionCommand === program) handles its own TTY check.
-    // status is the only command safe for scripts/CI; everything else prompts.
-    if (actionCommand !== thisCommand && actionCommand.name() !== 'status') assertInteractive();
+    // Each command guards interactivity itself, so flag-driven runs work headless.
   });
 
 program
@@ -40,11 +37,19 @@ program
 program
   .command('branch')
   .description('Start a new work branch (feature, bugfix, hotfix, …) the right way')
+  .option('-t, --type <type>', 'branch type (feature, bugfix, …) — runs without prompts when used with --name')
+  .option('-n, --name <name>', 'branch name')
+  .option('--push', 'push the new branch to origin')
   .action(branchCommand);
 
 program
   .command('commit')
   .description('Create a well-formed commit with a guided wizard')
+  .option('-t, --type <type>', 'commit type (feat, fix, …) — runs without prompts when used with -m')
+  .option('-s, --scope <scope>', 'commit scope')
+  .option('-m, --message <description>', 'commit description')
+  .option('--breaking [description]', 'mark as a breaking change (optionally with a migration note)')
+  .option('-a, --all', 'stage all changes before committing')
   .action(commitCommand);
 
 program
@@ -69,11 +74,16 @@ const release = program
 release
   .command('start')
   .description('Start a release: bump the version and generate the changelog')
+  .option('--major', 'bump the major version (without prompting)')
+  .option('--minor', 'bump the minor version (without prompting)')
+  .option('--patch', 'bump the patch version (without prompting)')
+  .option('--version <version>', 'set an exact version (without prompting)')
   .action(releaseStartCommand);
 
 release
   .command('finish')
   .description('Finish the open release: merge, tag, push and clean up')
+  .option('-y, --yes', 'skip the confirmation prompt (for automation)')
   .action(releaseFinishCommand);
 
 // No subcommand: launch the interactive menu in a terminal, or show help otherwise.

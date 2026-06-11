@@ -1,7 +1,8 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pc from 'picocolors';
-import { detectDevelopBranch, detectMainBranch, RC_FILENAME } from '../core/config.js';
+import { buildAgentInstructions, writeManagedBlock } from '../core/ai-instructions.js';
+import { detectDevelopBranch, detectMainBranch, loadConfig, RC_FILENAME } from '../core/config.js';
 import {
   getRepoRoot,
   hasRemote,
@@ -93,6 +94,22 @@ export async function initCommand(): Promise<void> {
       pkg.gitwiz = settings;
     });
     log.success('Saved "gitwiz" key in package.json');
+  }
+
+  // Offer to drop AI-agent instructions so coding agents follow this workflow.
+  const addAgents = await confirm({
+    message: 'Add an AGENTS.md so AI coding agents follow this git workflow?',
+    default: true,
+  });
+  if (addAgents) {
+    const { config } = loadConfig();
+    const block = buildAgentInstructions(config);
+    const result = writeManagedBlock(
+      join(repoRoot, 'AGENTS.md'),
+      block,
+      '# AGENTS.md\n\nInstructions for AI coding agents working in this repository.',
+    );
+    log.success(`${result === 'created' ? 'Created' : 'Updated'} AGENTS.md`);
   }
 
   log.blank();

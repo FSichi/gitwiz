@@ -15,7 +15,7 @@ import {
 } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
 import { log } from '../ui/output.js';
-import { confirm, select } from '../ui/prompts.js';
+import { assertInteractive, confirm, select } from '../ui/prompts.js';
 
 function mergeConflictError(target: string): GitwizError {
   return new GitwizError(
@@ -78,9 +78,14 @@ export function performReleaseFinish(
   return { tag };
 }
 
-export async function releaseFinishCommand(): Promise<void> {
+export interface ReleaseFinishOptions {
+  yes?: boolean;
+}
+
+export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Promise<void> {
   ensureGitRepo();
   const { config } = loadConfig();
+  const auto = Boolean(opts.yes);
 
   let releases = captureGit(['branch', '--list', 'release/*', '--format=%(refname:short)'])
     .split('\n')
@@ -94,13 +99,16 @@ export async function releaseFinishCommand(): Promise<void> {
       .map((line) => line.split('\t')[1]?.replace('refs/heads/', '') ?? '')
       .filter(Boolean);
     if (remoteReleases.length > 0) {
-      const get = await confirm({
-        message: `Release branch ${remoteReleases[0]} exists on origin but not locally. Check it out?`,
-        default: true,
-      });
-      if (!get) {
-        log.dim('Cancelled.');
-        return;
+      if (!auto) {
+        assertInteractive();
+        const get = await confirm({
+          message: `Release branch ${remoteReleases[0]} exists on origin but not locally. Check it out?`,
+          default: true,
+        });
+        if (!get) {
+          log.dim('Cancelled.');
+          return;
+        }
       }
       runGit(['fetch', 'origin']);
       runGit(['switch', remoteReleases[0]!]);
@@ -114,13 +122,20 @@ export async function releaseFinishCommand(): Promise<void> {
     });
   }
 
-  const branch =
-    releases.length === 1
-      ? releases[0]!
-      : await select({
-          message: 'Which release do you want to finish?',
-          choices: releases.map((r) => ({ name: r, value: r })),
-        });
+  let branch: string;
+  if (releases.length === 1) {
+    branch = releases[0]!;
+  } else if (auto) {
+    throw new GitwizError(`Multiple release branches are open: ${releases.join(', ')}.`, {
+      hint: 'Finish them one at a time without --yes, or delete the extra branch.',
+    });
+  } else {
+    assertInteractive();
+    branch = await select({
+      message: 'Which release do you want to finish?',
+      choices: releases.map((r) => ({ name: r, value: r })),
+    });
+  }
   const version = branch.slice('release/'.length);
   const tag = `${config.tagPrefix}${version}`;
 
@@ -136,13 +151,16 @@ export async function releaseFinishCommand(): Promise<void> {
     for (const line of captureGit(['status', '--short']).split('\n').filter(Boolean)) {
       log.dim(`  ${line}`);
     }
-    const commitThem = await confirm({
-      message: `Commit them to ${branch} as part of the release?`,
-      default: true,
-    });
-    if (!commitThem) {
-      log.dim('Cancelled — clean up the release branch first.');
-      return;
+    if (!auto) {
+      assertInteractive();
+      const commitThem = await confirm({
+        message: `Commit them to ${branch} as part of the release?`,
+        default: true,
+      });
+      if (!commitThem) {
+        log.dim('Cancelled — clean up the release branch first.');
+        return;
+      }
     }
     runGit(['add', '-A']);
     runGit(['commit', '-m', `chore(release): ${tag} updates`]);
@@ -159,10 +177,13 @@ export async function releaseFinishCommand(): Promise<void> {
   log.info(`  ${hasRemote() ? '5' : '4'}. Delete the ${branch} branch`);
   log.blank();
 
-  const go = await confirm({ message: `Finish release ${version}?`, default: true });
-  if (!go) {
-    log.dim('Cancelled.');
-    return;
+  if (!auto) {
+    assertInteractive();
+    const go = await confirm({ message: `Finish release ${version}?`, default: true });
+    if (!go) {
+      log.dim('Cancelled.');
+      return;
+    }
   }
 
   performReleaseFinish(config, version);

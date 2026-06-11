@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import { normalizeBranchName, validateBranchName } from '../core/branch-name.js';
-import { baseBranchFor, loadConfig } from '../core/config.js';
+import { baseBranchFor, loadConfig, type BranchType } from '../core/config.js';
 import {
   ensureGitRepo,
   getCurrentBranch,
@@ -14,16 +14,18 @@ import {
 } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
 import { log } from '../ui/output.js';
-import { confirm, input, select } from '../ui/prompts.js';
+import { assertInteractive, confirm, input, select } from '../ui/prompts.js';
 
-export async function branchCommand(): Promise<void> {
+export interface BranchOptions {
+  type?: string;
+  name?: string;
+  push?: boolean;
+}
+
+export async function branchCommand(opts: BranchOptions = {}): Promise<void> {
   ensureGitRepo();
   const { config, source } = loadConfig();
-  if (source === 'detected') {
-    log.dim(
-      `Using auto-detected branches (main: ${config.mainBranch}, work base: ${config.developBranch}). Run "gitwiz init" to pin them.`,
-    );
-  }
+  const nonInteractive = Boolean(opts.type && opts.name);
 
   if (getCurrentBranch() === '') {
     throw new GitwizError('You are not on any branch (detached HEAD).', {
@@ -31,21 +33,43 @@ export async function branchCommand(): Promise<void> {
     });
   }
 
-  const branchType = await select({
-    message: 'What kind of work are you starting?',
-    choices: config.branchTypes.map((t) => ({
-      name: `${t.prefix.padEnd(10)} ${pc.dim(t.description)}`,
-      value: t,
-      short: t.type,
-    })),
-  });
-  const base = baseBranchFor(branchType, config);
+  // Resolve the branch type and name (from flags or prompts).
+  let branchType: BranchType;
+  let nameRaw: string;
+  if (nonInteractive) {
+    const found = config.branchTypes.find((t) => t.type === opts.type);
+    if (!found) {
+      throw new GitwizError(`Unknown branch type "${opts.type}".`, {
+        hint: `Valid types: ${config.branchTypes.map((t) => t.type).join(', ')}.`,
+      });
+    }
+    branchType = found;
+    nameRaw = opts.name!;
+  } else {
+    assertInteractive();
+    if (source === 'detected') {
+      log.dim(
+        `Using auto-detected branches (main: ${config.mainBranch}, work base: ${config.developBranch}). Run "gitwiz init" to pin them.`,
+      );
+    }
+    branchType = await select({
+      message: 'What kind of work are you starting?',
+      choices: config.branchTypes.map((t) => ({
+        name: `${t.prefix.padEnd(10)} ${pc.dim(t.description)}`,
+        value: t,
+        short: t.type,
+      })),
+    });
+    nameRaw = await input({
+      message: `Name for the new branch ${pc.dim(`(will become ${branchType.prefix}<name>)`)}: `,
+      validate: (value) => validateBranchName(normalizeBranchName(value)) ?? true,
+    });
+  }
 
-  const nameRaw = await input({
-    message: `Name for the new branch ${pc.dim(`(will become ${branchType.prefix}<name>)`)}: `,
-    validate: (value) => validateBranchName(normalizeBranchName(value)) ?? true,
-  });
+  const base = baseBranchFor(branchType, config);
   const name = normalizeBranchName(nameRaw);
+  const nameError = validateBranchName(name);
+  if (nameError) throw new GitwizError(nameError);
   const target = `${branchType.prefix}${name}`;
 
   if (localBranchExists(target)) {
@@ -61,6 +85,11 @@ export async function branchCommand(): Promise<void> {
   let stashed = false;
   let updateBase = true;
   if (!isWorkingTreeClean()) {
+    if (nonInteractive) {
+      throw new GitwizError('You have uncommitted changes.', {
+        hint: 'Commit or stash them first — create the branch before you start editing.',
+      });
+    }
     const action = await select({
       message: 'You have uncommitted changes. What should we do with them?',
       choices: [
@@ -96,21 +125,21 @@ export async function branchCommand(): Promise<void> {
     if (hasRemote() && remoteBranchExists(base)) {
       if (!tryRunGit(['pull', '--ff-only', 'origin', base])) {
         log.warn(`Could not fast-forward ${base} (offline, or the branch has diverged).`);
-        const go = await confirm({
-          message: `Create ${target} from your local ${base} anyway?`,
-          default: true,
-        });
-        if (!go) {
-          if (stashed) runGit(['stash', 'pop']);
-          log.dim('Cancelled.');
-          return;
+        if (!nonInteractive) {
+          const go = await confirm({
+            message: `Create ${target} from your local ${base} anyway?`,
+            default: true,
+          });
+          if (!go) {
+            if (stashed) runGit(['stash', 'pop']);
+            log.dim('Cancelled.');
+            return;
+          }
         }
       }
     }
-    runGit(['switch', '-c', target]);
-  } else {
-    runGit(['switch', '-c', target]);
   }
+  runGit(['switch', '-c', target]);
 
   if (stashed) {
     if (!tryRunGit(['stash', 'pop'])) {
@@ -119,13 +148,13 @@ export async function branchCommand(): Promise<void> {
     }
   }
 
+  let doPush = false;
   if (hasRemote()) {
-    const push = await confirm({
-      message: `Push ${target} to origin and set it as upstream?`,
-      default: true,
-    });
-    if (push) runGit(['push', '-u', 'origin', target]);
+    doPush = nonInteractive
+      ? Boolean(opts.push)
+      : await confirm({ message: `Push ${target} to origin and set it as upstream?`, default: true });
   }
+  if (doPush) runGit(['push', '-u', 'origin', target]);
 
   log.blank();
   log.success(`You are now on ${pc.bold(target)}. Happy hacking!`);

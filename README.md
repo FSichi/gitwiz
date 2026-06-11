@@ -271,6 +271,30 @@ Without config, gitwiz auto-detects your branches (`main`/`master`, `develop`/`d
 
 </details>
 
+## Working with AI agents
+
+gitwiz plays well with AI coding assistants (Claude Code, Cursor, Copilot, …) in two ways.
+
+### 1. Teach the agent your workflow
+
+`gitwiz init` offers to write an **`AGENTS.md`** with a managed block describing this repo's branch model, commit conventions, and the exact commands to run — generated from your config, so it always matches your real setup. Re-running `init` updates just that block (between `<!-- gitwiz:start -->` / `<!-- gitwiz:end -->`) without touching the rest of the file.
+
+### 2. Non-interactive commands
+
+The wizards are for humans, but every workflow command also takes flags so an agent (or CI) can run it **without prompts** — a bare command in a non-TTY context fails fast instead of hanging:
+
+```bash
+gitwiz branch --type feature --name add-login      # add --push to publish it
+gitwiz commit --type feat --scope auth -m "add login form"
+gitwiz commit --type fix -m "handle null user" --all          # --all stages everything
+gitwiz commit --type feat -m "new api" --breaking "v1 removed"
+gitwiz release start --minor                        # or --patch / --major / --version 1.4.0
+gitwiz release finish --yes
+gitwiz status                                       # read-only, always safe
+```
+
+`gitwiz commit` runs non-interactively as soon as `--type` and `-m` are given; `gitwiz branch` when `--type` and `--name` are given.
+
 ## Why gitwiz?
 
 - **Zero prerequisites** — plain git underneath. No git-flow binary, no global config.

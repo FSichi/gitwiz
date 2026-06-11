@@ -8,7 +8,7 @@ import {
   tryCaptureGit,
 } from '../core/git.js';
 import { log } from '../ui/output.js';
-import { checkbox, confirm, input, select } from '../ui/prompts.js';
+import { assertInteractive, checkbox, confirm, input, select } from '../ui/prompts.js';
 
 type UndoAction =
   | 'abort-operation'
@@ -71,6 +71,7 @@ async function guardPushedCommit(): Promise<'proceed' | 'reverted' | 'cancelled'
 
 export async function undoCommand(): Promise<void> {
   ensureGitRepo();
+  assertInteractive();
 
   const operation = getInProgressOperation();
   const lastCommit = tryCaptureGit(['log', '-1', '--format=%h %s']);

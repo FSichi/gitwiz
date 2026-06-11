@@ -14,7 +14,7 @@ import {
 } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
 import { log } from '../ui/output.js';
-import { confirm, select } from '../ui/prompts.js';
+import { assertInteractive, confirm, select } from '../ui/prompts.js';
 
 const STASH_MESSAGE = 'gitwiz sync autostash';
 
@@ -43,6 +43,7 @@ function conflictError(operation: 'merge' | 'rebase', stashed: boolean): GitwizE
 
 export async function syncCommand(): Promise<void> {
   ensureGitRepo();
+  assertInteractive();
   const { config } = loadConfig();
 
   const current = getCurrentBranch();

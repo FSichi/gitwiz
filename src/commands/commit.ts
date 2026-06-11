@@ -4,7 +4,16 @@ import { buildCommitHeader, buildCommitMessage, normalizeScope } from '../core/c
 import { captureGit, ensureGitRepo, runGit } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
 import { box, log } from '../ui/output.js';
-import { checkbox, confirm, input, select } from '../ui/prompts.js';
+import { assertInteractive, checkbox, confirm, input, select } from '../ui/prompts.js';
+
+export interface CommitOptions {
+  type?: string;
+  scope?: string;
+  message?: string;
+  /** true (flag with no value) → breaking; string → breaking with footer text. */
+  breaking?: boolean | string;
+  all?: boolean;
+}
 
 function getStagedFiles(): string[] {
   return captureGit(['diff', '--name-only', '--cached']).split('\n').filter(Boolean);
@@ -26,12 +35,61 @@ function getStageableFiles(): string[] {
   return files;
 }
 
-export async function commitCommand(): Promise<void> {
+function createCommit(message: string): void {
+  try {
+    runGit(['commit', '-m', message]);
+  } catch (err) {
+    if (err instanceof GitwizError) {
+      throw new GitwizError('The commit was rejected (a git hook may have failed).', {
+        hint: 'Fix the reported issue and run "gitwiz commit" again.',
+      });
+    }
+    throw err;
+  }
+  log.success('Commit created.');
+}
+
+export async function commitCommand(opts: CommitOptions = {}): Promise<void> {
   ensureGitRepo();
   const { config } = loadConfig();
+  const nonInteractive = Boolean(opts.type && opts.message);
+
+  if (opts.all) runGit(['add', '-A']);
+
+  // Non-interactive path: everything comes from flags, no prompts.
+  if (nonInteractive) {
+    if (!config.commitTypes.some((t) => t.type === opts.type)) {
+      throw new GitwizError(`Unknown commit type "${opts.type}".`, {
+        hint: `Valid types: ${config.commitTypes.map((t) => t.type).join(', ')}.`,
+      });
+    }
+    if (getStagedFiles().length === 0) {
+      if (getStageableFiles().length === 0) {
+        log.success('Working tree clean — nothing to commit.');
+        return;
+      }
+      throw new GitwizError('Nothing is staged.', {
+        hint: 'Stage the files first, or pass --all to stage everything.',
+      });
+    }
+    const breaking = opts.breaking !== undefined && opts.breaking !== false;
+    const parts = {
+      type: opts.type!,
+      scope: opts.scope ? normalizeScope(opts.scope) || undefined : undefined,
+      description: opts.message!,
+      breaking,
+      breakingDescription: typeof opts.breaking === 'string' ? opts.breaking : undefined,
+    };
+    const header = buildCommitHeader(parts);
+    if (header.length > 72) log.warn(`The commit subject is ${header.length} characters (recommended ≤ 72).`);
+    createCommit(buildCommitMessage(parts));
+    return;
+  }
+
+  // Interactive path.
+  assertInteractive();
 
   let staged = getStagedFiles();
-
   if (staged.length === 0) {
     const stageable = getStageableFiles();
     if (stageable.length === 0) {
@@ -104,15 +162,5 @@ export async function commitCommand(): Promise<void> {
     return;
   }
 
-  try {
-    runGit(['commit', '-m', message]);
-  } catch (err) {
-    if (err instanceof GitwizError) {
-      throw new GitwizError('The commit was rejected (a git hook may have failed).', {
-        hint: 'Fix the reported issue and run "gitwiz commit" again.',
-      });
-    }
-    throw err;
-  }
-  log.success('Commit created.');
+  createCommit(message);
 }
