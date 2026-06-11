@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1](https://github.com/FSichi/gitwiz/compare/v0.2.0...v0.2.1) (2026-06-11)
+
+### Bug Fixes
+
+* quiet noisy git output for a cleaner console ([490c2e2](https://github.com/FSichi/gitwiz/commit/490c2e2262a3da2f41b110aa3a19fb77d2e283c5))
+
 ## [0.2.0](https://github.com/FSichi/gitwiz/compare/v0.1.1...v0.2.0) (2026-06-11)
 
 ### Features
