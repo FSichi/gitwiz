@@ -62,6 +62,66 @@ describe('loadConfig', () => {
     expect(config.release.changelogFile).toBe('CHANGELOG.md');
   });
 
+  it('merges commitTypes over the defaults instead of replacing them', () => {
+    const r = repo();
+    r.writeFile(
+      '.gitwizrc.json',
+      JSON.stringify({
+        commitTypes: [
+          { type: 'ci', changelogSection: 'CI' }, // override one field of a default
+          { type: 'wip', description: 'Work in progress' }, // brand new type
+          { type: 'style', hidden: true }, // remove a default
+        ],
+      }),
+    );
+    const { config } = loadConfig({ cwd: r.dir });
+
+    const ci = config.commitTypes.find((t) => t.type === 'ci')!;
+    expect(ci.changelogSection).toBe('CI');
+    expect(ci.emoji).toBe('🤖'); // untouched fields keep the default
+
+    const wip = config.commitTypes.find((t) => t.type === 'wip')!;
+    expect(wip.description).toBe('Work in progress');
+    expect(wip.changelogSection).toBe(false);
+
+    expect(config.commitTypes.some((t) => t.type === 'style')).toBe(false);
+    expect(config.commitTypes.some((t) => t.type === 'feat')).toBe(true); // defaults intact
+  });
+
+  it('merges branchTypes over the defaults', () => {
+    const r = repo();
+    r.writeFile(
+      '.gitwizrc.json',
+      JSON.stringify({
+        branchTypes: [
+          { type: 'feature', prefix: 'feat/' }, // override the prefix only
+          { type: 'spike' }, // new type gets sensible fallbacks
+          { type: 'docs', hidden: true },
+        ],
+      }),
+    );
+    const { config } = loadConfig({ cwd: r.dir });
+
+    expect(config.branchTypes.find((t) => t.type === 'feature')!.prefix).toBe('feat/');
+    expect(config.branchTypes.find((t) => t.type === 'feature')!.base).toBe('develop');
+    expect(config.branchTypes.find((t) => t.type === 'spike')!.prefix).toBe('spike/');
+    expect(config.branchTypes.some((t) => t.type === 'docs')).toBe(false);
+    expect(config.branchTypes.some((t) => t.type === 'hotfix')).toBe(true);
+  });
+
+  it('derives protected branches and accepts an explicit list', () => {
+    const trunk = repo();
+    expect(loadConfig({ cwd: trunk.dir }).config.protectedBranches).toEqual([]);
+
+    const flow = repo();
+    flow.git('branch', 'develop');
+    expect(loadConfig({ cwd: flow.dir }).config.protectedBranches).toEqual(['main', 'develop']);
+
+    const custom = repo();
+    custom.writeFile('.gitwizrc.json', JSON.stringify({ protectedBranches: ['release-line'] }));
+    expect(loadConfig({ cwd: custom.dir }).config.protectedBranches).toEqual(['release-line']);
+  });
+
   it('rejects invalid config with the offending path', () => {
     const r = repo();
     r.writeFile('.gitwizrc.json', JSON.stringify({ mainBranch: 42 }));

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace" font-size="15">
+  <style>
+    .line { opacity: 0; }
+    @keyframes s1 { 0%,2% {opacity:0} 4%,92% {opacity:1} 96%,100% {opacity:0} }
+    @keyframes s2 { 0%,10% {opacity:0} 12%,92% {opacity:1} 96%,100% {opacity:0} }
+    @keyframes s3 { 0%,20% {opacity:0} 22%,92% {opacity:1} 96%,100% {opacity:0} }
+    @keyframes s4 { 0%,30% {opacity:0} 32%,92% {opacity:1} 96%,100% {opacity:0} }
+    @keyframes s5 { 0%,42% {opacity:0} 44%,92% {opacity:1} 96%,100% {opacity:0} }
+    @keyframes s6 { 0%,56% {opacity:0} 58%,92% {opacity:1} 96%,100% {opacity:0} }
+    @keyframes s7 { 0%,66% {opacity:0} 68%,92% {opacity:1} 96%,100% {opacity:0} }
+    @keyframes s8 { 0%,76% {opacity:0} 78%,92% {opacity:1} 96%,100% {opacity:0} }
+    .a1 { animation: s1 11s linear infinite; }
+    .a2 { animation: s2 11s linear infinite; }
+    .a3 { animation: s3 11s linear infinite; }
+    .a4 { animation: s4 11s linear infinite; }
+    .a5 { animation: s5 11s linear infinite; }
+    .a6 { animation: s6 11s linear infinite; }
+    .a7 { animation: s7 11s linear infinite; }
+    .a8 { animation: s8 11s linear infinite; }
+  </style>
+
+  <!-- terminal window -->
+  <rect x="2" y="2" width="756" height="396" rx="12" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
+  <circle cx="26" cy="26" r="6" fill="#ff5f57"/>
+  <circle cx="46" cy="26" r="6" fill="#febc2e"/>
+  <circle cx="66" cy="26" r="6" fill="#28c840"/>
+  <text x="380" y="31" fill="#8b949e" text-anchor="middle" font-size="13">gitwiz</text>
+  <line x1="2" y1="46" x2="758" y2="46" stroke="#30363d" stroke-width="1"/>
+
+  <!-- session -->
+  <text class="line a1" x="28" y="84" fill="#e6edf3"><tspan fill="#7ee787">$</tspan> gitwiz commit</text>
+
+  <text class="line a2" x="28" y="116" fill="#e6edf3"><tspan fill="#a5d6ff">?</tspan> Type of change: <tspan fill="#79c0ff">✨ feat — A new feature</tspan></text>
+  <text class="line a3" x="28" y="148" fill="#e6edf3"><tspan fill="#a5d6ff">?</tspan> Scope (optional): <tspan fill="#79c0ff">auth</tspan></text>
+  <text class="line a4" x="28" y="180" fill="#e6edf3"><tspan fill="#a5d6ff">?</tspan> Short description: <tspan fill="#79c0ff">add password reset flow</tspan></text>
+
+  <g class="line a5">
+    <rect x="28" y="200" width="400" height="36" rx="6" fill="#161b22" stroke="#30363d"/>
+    <text x="44" y="224" fill="#e6edf3">feat(auth): add password reset flow</text>
+  </g>
+
+  <text class="line a6" x="28" y="268" fill="#e6edf3"><tspan fill="#a5d6ff">?</tspan> Create this commit? <tspan fill="#79c0ff">Yes</tspan></text>
+  <text class="line a7" x="28" y="300" fill="#8b949e">$ git commit -m "feat(auth): add password reset flow"</text>
+  <text class="line a8" x="28" y="332" fill="#7ee787">✔ Commit created.</text>
+  <text class="line a8" x="28" y="368" fill="#8b949e" font-size="13">branch · commit · status · sync · undo · stash · release — wizards for everything</text>
+</svg>

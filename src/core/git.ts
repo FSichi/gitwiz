@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { GitwizError } from '../ui/errors.js';
+import { t } from '../ui/i18n.js';
 import { echoGitCommand, isVerbose } from '../ui/output.js';
 
 export interface GitOptions {
@@ -105,8 +106,8 @@ export function isGitRepo(opts: GitOptions = {}): boolean {
 
 export function ensureGitRepo(opts: GitOptions = {}): void {
   if (!isGitRepo(opts)) {
-    throw new GitwizError('This folder is not a git repository.', {
-      hint: 'Move into your project folder, or run "gitwiz init" to set one up.',
+    throw new GitwizError(t('This folder is not a git repository.'), {
+      hint: t('Move into your project folder, or run "gitwiz init" to set one up.'),
     });
   }
 }

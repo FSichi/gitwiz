@@ -14,17 +14,18 @@ import {
   type GitOptions,
 } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
+import { t } from '../ui/i18n.js';
 import { log } from '../ui/output.js';
 import { assertInteractive, confirm, select } from '../ui/prompts.js';
 
 function mergeConflictError(target: string): GitwizError {
   return new GitwizError(
     [
-      `The merge into ${target} stopped because of conflicts:`,
-      '  1. Fix the conflicted files ("gitwiz status" lists them).',
-      '  2. Stage them:    git add <file>',
-      '  3. Continue with: git merge --continue',
-      '  Or undo with:     git merge --abort  (then run "gitwiz release finish" again)',
+      t('The merge into {target} stopped because of conflicts:', { target }),
+      `  ${t('1. Fix the conflicted files ("gitwiz status" lists them).')}`,
+      `  ${t('2. Stage them:    git add <file>')}`,
+      `  ${t('3. Continue with: git merge --continue')}`,
+      `  ${t('Or undo with:     git merge --abort  (then run "gitwiz release finish" again)')}`,
     ].join('\n'),
   );
 }
@@ -41,8 +42,8 @@ export function performReleaseFinish(
 
   // Pre-flight: never merge first and fail at the tag.
   if (tagExists(tag, opts)) {
-    throw new GitwizError(`Tag "${tag}" already exists.`, {
-      hint: 'This version seems to be released already. Delete the tag or pick another version.',
+    throw new GitwizError(t('Tag "{tag}" already exists.', { tag }), {
+      hint: t('This version seems to be released already. Delete the tag or pick another version.'),
     });
   }
 
@@ -102,11 +103,13 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
       if (!auto) {
         assertInteractive();
         const get = await confirm({
-          message: `Release branch ${remoteReleases[0]} exists on origin but not locally. Check it out?`,
+          message: t('Release branch {branch} exists on origin but not locally. Check it out?', {
+            branch: remoteReleases[0]!,
+          }),
           default: true,
         });
         if (!get) {
-          log.dim('Cancelled.');
+          log.dim(t('Cancelled.'));
           return;
         }
       }
@@ -117,8 +120,8 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
   }
 
   if (releases.length === 0) {
-    throw new GitwizError('No release branch found.', {
-      hint: 'Start one with "gitwiz release start".',
+    throw new GitwizError(t('No release branch found.'), {
+      hint: t('Start one with "gitwiz release start".'),
     });
   }
 
@@ -126,13 +129,13 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
   if (releases.length === 1) {
     branch = releases[0]!;
   } else if (auto) {
-    throw new GitwizError(`Multiple release branches are open: ${releases.join(', ')}.`, {
-      hint: 'Finish them one at a time without --yes, or delete the extra branch.',
+    throw new GitwizError(t('Multiple release branches are open: {branches}.', { branches: releases.join(', ') }), {
+      hint: t('Finish them one at a time without --yes, or delete the extra branch.'),
     });
   } else {
     assertInteractive();
     branch = await select({
-      message: 'Which release do you want to finish?',
+      message: t('Which release do you want to finish?'),
       choices: releases.map((r) => ({ name: r, value: r })),
     });
   }
@@ -140,25 +143,25 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
   const tag = `${config.tagPrefix}${version}`;
 
   if (tagExists(tag)) {
-    throw new GitwizError(`Tag "${tag}" already exists.`, {
-      hint: 'This version seems to be released already.',
+    throw new GitwizError(t('Tag "{tag}" already exists.', { tag }), {
+      hint: t('This version seems to be released already.'),
     });
   }
 
   // Stray changes on the release branch must be dealt with explicitly.
   if (getCurrentBranch() === branch && !isWorkingTreeClean()) {
-    log.warn('There are uncommitted changes on the release branch:');
+    log.warn(t('There are uncommitted changes on the release branch:'));
     for (const line of captureGit(['status', '--short']).split('\n').filter(Boolean)) {
       log.dim(`  ${line}`);
     }
     if (!auto) {
       assertInteractive();
       const commitThem = await confirm({
-        message: `Commit them to ${branch} as part of the release?`,
+        message: t('Commit them to {branch} as part of the release?', { branch }),
         default: true,
       });
       if (!commitThem) {
-        log.dim('Cancelled — clean up the release branch first.');
+        log.dim(t('Cancelled — clean up the release branch first.'));
         return;
       }
     }
@@ -167,21 +170,21 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
   }
 
   log.blank();
-  log.info(pc.bold('This will:'));
-  log.info(`  1. Merge ${pc.cyan(branch)} into ${pc.cyan(config.developBranch)} (--no-ff)`);
-  log.info(`  2. Create tag ${pc.cyan(tag)}`);
-  if (hasRemote()) log.info(`  3. Push ${config.developBranch} and the tag to origin`);
+  log.info(pc.bold(t('This will:')));
+  log.info(`  ${t('1. Merge {branch} into {target} (--no-ff)', { branch: pc.cyan(branch), target: pc.cyan(config.developBranch) })}`);
+  log.info(`  ${t('2. Create tag {tag}', { tag: pc.cyan(tag) })}`);
+  if (hasRemote()) log.info(`  ${t('3. Push {branch} and the tag to origin', { branch: config.developBranch })}`);
   if (config.release.alsoMergeToMain && config.mainBranch !== config.developBranch) {
-    log.info(`  4. Also merge into ${pc.cyan(config.mainBranch)} and push it`);
+    log.info(`  ${t('4. Also merge into {branch} and push it', { branch: pc.cyan(config.mainBranch) })}`);
   }
-  log.info(`  ${hasRemote() ? '5' : '4'}. Delete the ${branch} branch`);
+  log.info(`  ${hasRemote() ? '5' : '4'}. ${t('Delete the {branch} branch', { branch })}`);
   log.blank();
 
   if (!auto) {
     assertInteractive();
-    const go = await confirm({ message: `Finish release ${version}?`, default: true });
+    const go = await confirm({ message: t('Finish release {version}?', { version }), default: true });
     if (!go) {
-      log.dim('Cancelled.');
+      log.dim(t('Cancelled.'));
       return;
     }
   }
@@ -189,8 +192,8 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
   performReleaseFinish(config, version);
 
   log.blank();
-  log.success(`Release ${pc.bold(tag)} is done! 🎉`);
+  log.success(t('Release {tag} is done! 🎉', { tag: pc.bold(tag) }));
   if (!config.release.alsoMergeToMain && config.mainBranch !== config.developBranch) {
-    log.warn(`${config.mainBranch} was NOT modified — deploy/merge to production is a separate, manual step.`);
+    log.warn(t('{branch} was NOT modified — deploy/merge to production is a separate, manual step.', { branch: config.mainBranch }));
   }
 }

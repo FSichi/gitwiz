@@ -10,6 +10,17 @@ export interface BumpPreviews {
   patch: string;
 }
 
+export type BumpKind = 'major' | 'minor' | 'patch';
+
+/** Recommend a bump from the conventional commits since the last release. */
+export function suggestBump(
+  commits: ReadonlyArray<{ type: string | null; breaking: boolean }>,
+): BumpKind {
+  if (commits.some((c) => c.breaking)) return 'major';
+  if (commits.some((c) => c.type === 'feat')) return 'minor';
+  return 'patch';
+}
+
 export function bumpPreviews(current: string): BumpPreviews {
   const base = semver.valid(current);
   if (!base) throw new GitwizError(`Current version "${current}" is not valid semver.`);

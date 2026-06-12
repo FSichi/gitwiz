@@ -42,6 +42,11 @@ export function buildAgentInstructions(config: GitwizConfig): string {
   if (mainPrefixes.length > 0) {
     lines.push(`- ${mainPrefixes.join(', ')} → branch from ${code(config.mainBranch)} (urgent production fix)`);
   }
+  if (config.protectedBranches.length > 0) {
+    lines.push(
+      `Never commit directly to ${config.protectedBranches.map(code).join(', ')} — changes arrive via work branches and PRs.`,
+    );
+  }
   lines.push(
     '',
     '### Commits',

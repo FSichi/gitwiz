@@ -2,20 +2,11 @@
 
 > Friendly git workflows — interactive wizards for branching, commits, releases, sync, and undo.
 
-**gitwiz** removes the friction of working with git from the terminal. Instead of memorizing commands, you answer simple questions. Every git command gitwiz runs is printed before it executes, so you learn git as you go.
+**gitwiz** removes the friction of working with git from the terminal. Instead of memorizing commands, you answer simple questions. Every git command gitwiz runs is printed before it executes, so you learn git as you go. The UI speaks **English and Spanish** (auto-detected).
 
-```
-$ gitwiz commit
-? Type of change: ✨ feat — A new feature
-? Scope (optional): auth
-? Short description: add password reset flow
-┌──────────────────────────────────────┐
-│ feat(auth): add password reset flow  │
-└──────────────────────────────────────┘
-? Create this commit? Yes
-  $ git commit -m "feat(auth): add password reset flow"
-✔ Commit created.
-```
+<p align="center">
+  <img src="docs/demo.svg" alt="gitwiz commit demo" width="720">
+</p>
 
 ## Install
 
@@ -41,7 +32,8 @@ Run `gitwiz` on its own (in a terminal) to open an interactive menu listing ever
 | `gitwiz commit` | Guided [conventional commit](https://www.conventionalcommits.org): pick files, type, scope, description. |
 | `gitwiz sync` | Safely bring the latest changes into your branch (guided merge/rebase, auto-stash). |
 | `gitwiz undo` | Undo things without fear: last commit, staged files, local changes — each option explained. |
-| `gitwiz release start` | Bump the version, generate/update `CHANGELOG.md` from your commits, open a release branch. |
+| `gitwiz stash` | Set changes aside for later with a description, and restore/inspect/delete them safely. |
+| `gitwiz release start` | Bump the version (with a suggested bump), generate/update `CHANGELOG.md`, open a release branch. |
 | `gitwiz release finish` | Merge the release, create the tag, push, clean up. |
 
 ### `gitwiz status`
@@ -64,9 +56,15 @@ Fetches, shows how far ahead/behind you are of your base branch, and offers plai
 
 A menu of safe undos, each showing the exact git command it will run. Destructive options ask twice and mention `git reflog` as the escape hatch. If the last commit is already pushed, it offers a `git revert` instead of rewriting history.
 
+### `gitwiz stash`
+
+A friendly face for `git stash`: save your current changes with a description ("so future-you recognizes them"), then restore, inspect, or delete saved stashes from a menu. Restoring offers both flavors — bring it back and remove it from the list (`pop`), or keep a copy (`apply`).
+
 ### `gitwiz release`
 
-`release start` checks nothing else is mid-release, updates your work branch, creates `release/<version>`, bumps `package.json` (and `package-lock.json`), and generates the changelog section from your conventional commits since the last tag — with compare/commit links when your remote is GitHub or GitLab. Review it, then `release finish` merges it back (`--no-ff`), tags `v<version>`, pushes, and deletes the release branch.
+`release start` checks nothing else is mid-release, updates your work branch, creates `release/<version>`, bumps `package.json` (and `package-lock.json`), and generates the changelog section from your conventional commits since the last tag — with compare/commit links when your remote is GitHub or GitLab. It also **suggests the bump** from those commits (any breaking change → major, any `feat` → minor, otherwise patch). Review it, then `release finish` merges it back (`--no-ff`), tags `v<version>`, pushes, and deletes the release branch.
+
+Not an npm project? No problem — without a `package.json` the current version is read from the latest release tag, so Python/Go/.NET repos can release too (the tag carries the version).
 
 The changelog merge is structural: your existing `CHANGELOG.md` preamble (badges, custom intro) is preserved verbatim, old releases are kept, and re-running the same version replaces its section instead of duplicating it. CRLF files stay CRLF.
 
@@ -252,15 +250,17 @@ Without config, gitwiz auto-detects your branches (`main`/`master`, `develop`/`d
   "mainBranch": "main",          // production branch
   "developBranch": "develop",    // where work branches start; same as mainBranch = trunk-based
   "tagPrefix": "v",              // release tags: v1.2.3 ("" for bare 1.2.3)
-  "branchTypes": [               // what "gitwiz branch" offers
-    { "type": "feature", "prefix": "feature/", "description": "New functionality", "base": "develop" },
-    { "type": "hotfix",  "prefix": "hotfix/",  "description": "Urgent fix for production", "base": "main" }
-    // ... bugfix, refactor, chore, docs
+  "language": "auto",            // wizard language: "en", "es" or "auto" (system locale)
+  "protectedBranches": ["main", "develop"], // gitwiz commit warns/refuses on these
+                                 // default: [mainBranch, developBranch] when distinct, [] in trunk mode
+  "branchTypes": [               // extends/overrides the defaults (merged by "type")
+    { "type": "feature", "prefix": "feat/" },          // override one field of a default
+    { "type": "spike" },                               // add a new type (prefix defaults to "spike/")
+    { "type": "docs", "hidden": true }                 // remove a default type
   ],
-  "commitTypes": [               // what "gitwiz commit" offers + changelog mapping
-    { "type": "feat", "emoji": "✨", "description": "A new feature", "changelogSection": "Features" },
-    { "type": "fix",  "emoji": "🐛", "description": "A bug fix",     "changelogSection": "Bug Fixes" }
-    // changelogSection: false hides the type from the changelog
+  "commitTypes": [               // extends/overrides the defaults (merged by "type")
+    { "type": "ci", "changelogSection": "CI" },        // make ci commits show in the changelog
+    { "type": "wip", "description": "Work in progress" }
   ],
   "release": {
     "alsoMergeToMain": false,    // true: release finish also merges into mainBranch
@@ -269,7 +269,13 @@ Without config, gitwiz auto-detects your branches (`main`/`master`, `develop`/`d
 }
 ```
 
+`branchTypes` and `commitTypes` **merge with the built-in defaults** — declare only what you change. Entries match by `type`: existing types are overridden field-by-field, unknown types are added, and `"hidden": true` removes one.
+
 </details>
+
+### Language
+
+The wizards speak English and Spanish. By default gitwiz follows your system locale; pin it per repo with `"language": "es"` (or `"en"`) in the config, or force it for one run with the `GITWIZ_LANG` environment variable. File output (CHANGELOG.md, AGENTS.md) is always English.
 
 ## Working with AI agents
 
@@ -295,12 +301,15 @@ gitwiz status                                       # read-only, always safe
 
 `gitwiz commit` runs non-interactively as soon as `--type` and `-m` are given; `gitwiz branch` when `--type` and `--name` are given.
 
+Committing to a **protected branch** (`main`/`develop` by default) fails fast in non-interactive mode — agents should create a work branch first. `--allow-protected` overrides when it's genuinely intended.
+
 ## Why gitwiz?
 
 - **Zero prerequisites** — plain git underneath. No git-flow binary, no global config.
 - **Educational** — every mutating git command is echoed before running (`--verbose` echoes the read-only ones too).
 - **Safe by default** — destructive actions double-confirm, pushed commits get revert suggestions, conflicts come with step-by-step instructions.
-- **Windows-first class** — no shell interpolation anywhere; arguments go to git verbatim. Tested on Windows and Linux.
+- **Windows-first class** — no shell interpolation anywhere; arguments go to git verbatim. Tested on Windows, macOS and Linux.
+- **Bilingual** — wizards in English or Spanish, following your system locale.
 - **Tiny** — 4 runtime dependencies, fast `npx` startup.
 
 ## License

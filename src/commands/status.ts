@@ -7,6 +7,7 @@ import {
   tryCaptureGit,
   type GitOptions,
 } from '../core/git.js';
+import { t } from '../ui/i18n.js';
 import { heading, log } from '../ui/output.js';
 
 export interface StatusInfo {
@@ -81,35 +82,41 @@ function buildSuggestions(
 
   if (operation) {
     tips.push(
-      `A ${operation} is in progress — resolve conflicts and continue (git ${operation} --continue), or abort it with ${pc.bold('gitwiz undo')}.`,
+      t('A {operation} is in progress — resolve conflicts and continue (git {operation} --continue), or abort it with {cmd}.', {
+        operation,
+        cmd: pc.bold('gitwiz undo'),
+      }),
     );
   }
   if (info.conflicted.length > 0) {
-    tips.push('Fix the conflicted files, then stage them with git add.');
+    tips.push(t('Fix the conflicted files, then stage them with git add.'));
   }
   if (info.staged.length > 0) {
-    tips.push(`You have staged changes — run ${pc.bold('gitwiz commit')} to commit them.`);
+    tips.push(t('You have staged changes — run {cmd} to commit them.', { cmd: pc.bold('gitwiz commit') }));
   } else if (info.unstaged.length > 0 || info.untracked.length > 0) {
     if (info.branch === config.mainBranch || info.branch === config.developBranch) {
       tips.push(
-        `You are editing directly on ${pc.bold(info.branch)} — run ${pc.bold('gitwiz branch')} to start a work branch first.`,
+        t('You are editing directly on {branch} — run {cmd} to start a work branch first.', {
+          branch: pc.bold(info.branch),
+          cmd: pc.bold('gitwiz branch'),
+        }),
       );
     } else {
-      tips.push(`Run ${pc.bold('gitwiz commit')} — it will help you pick files and write the message.`);
+      tips.push(t('Run {cmd} — it will help you pick files and write the message.', { cmd: pc.bold('gitwiz commit') }));
     }
   }
   if (info.behind > 0) {
-    tips.push(`Your branch is behind its remote — run ${pc.bold('gitwiz sync')} to update.`);
+    tips.push(t('Your branch is behind its remote — run {cmd} to update.', { cmd: pc.bold('gitwiz sync') }));
   }
   if (info.ahead > 0 && info.behind === 0) {
-    tips.push(`You have ${info.ahead} unpushed commit${info.ahead > 1 ? 's' : ''} — run ${pc.bold('git push')} to share them.`);
+    tips.push(t('You have {n} unpushed commit(s) — run {cmd} to share them.', { n: info.ahead, cmd: pc.bold('git push') }));
   }
   if (releaseBranch) {
-    tips.push(`Release branch ${pc.bold(releaseBranch)} is open — run ${pc.bold('gitwiz release finish')} when it is ready.`);
+    tips.push(t('Release branch {branch} is open — run {cmd} when it is ready.', { branch: pc.bold(releaseBranch), cmd: pc.bold('gitwiz release finish') }));
   }
 
   if (tips.length === 0) {
-    tips.push(`All clean and in sync. Start something new with ${pc.bold('gitwiz branch')}.`);
+    tips.push(t('All clean and in sync. Start something new with {cmd}.', { cmd: pc.bold('gitwiz branch') }));
   }
   return tips.slice(0, 3);
 }
@@ -135,40 +142,42 @@ export function statusCommand(opts: GitOptions = {}): void {
 
   log.blank();
   if (info.branch === null) {
-    log.warn('You are not on any branch (detached HEAD).');
-    log.dim('  Get back to safety with: git switch ' + config.developBranch);
+    log.warn(t('You are not on any branch (detached HEAD).'));
+    log.dim(`  ${t('Get back to safety with: git switch {branch}', { branch: config.developBranch })}`);
   } else {
     const base = findBaseBranch(info.branch, config);
-    heading(`On branch ${info.branch}${base ? pc.dim(` (based on ${base})`) : ''}`);
+    heading(
+      `${t('On branch {branch}', { branch: info.branch })}${base ? pc.dim(` ${t('(based on {base})', { base })}`) : ''}`,
+    );
     if (info.upstream) {
       const parts: string[] = [];
-      if (info.ahead > 0) parts.push(pc.green(`↑ ${info.ahead} ahead`));
-      if (info.behind > 0) parts.push(pc.yellow(`↓ ${info.behind} behind`));
-      if (parts.length === 0) parts.push(pc.green('in sync'));
-      log.info(`  ${parts.join(' · ')} ${pc.dim(`of ${info.upstream}`)}`);
+      if (info.ahead > 0) parts.push(pc.green(t('↑ {n} ahead', { n: info.ahead })));
+      if (info.behind > 0) parts.push(pc.yellow(t('↓ {n} behind', { n: info.behind })));
+      if (parts.length === 0) parts.push(pc.green(t('in sync')));
+      log.info(`  ${parts.join(' · ')} ${pc.dim(t('of {upstream}', { upstream: info.upstream }))}`);
     } else {
-      log.dim('  Not pushed to any remote yet.');
+      log.dim(`  ${t('Not pushed to any remote yet.')}`);
     }
   }
   if (operation) {
-    log.warn(`A ${operation} is in progress.`);
+    log.warn(t('A {operation} is in progress.', { operation }));
   }
   log.blank();
 
-  printFileGroup('Conflicted (fix these first):', '✖', pc.red, info.conflicted);
-  printFileGroup('Staged (ready to commit):', '+', pc.green, info.staged);
-  printFileGroup('Modified (not staged):', '~', pc.yellow, info.unstaged);
-  printFileGroup('Untracked (new files):', '?', pc.dim, info.untracked);
+  printFileGroup(t('Conflicted (fix these first):'), '✖', pc.red, info.conflicted);
+  printFileGroup(t('Staged (ready to commit):'), '+', pc.green, info.staged);
+  printFileGroup(t('Modified (not staged):'), '~', pc.yellow, info.unstaged);
+  printFileGroup(t('Untracked (new files):'), '?', pc.dim, info.untracked);
 
   if (
     info.staged.length + info.unstaged.length + info.untracked.length + info.conflicted.length ===
     0
   ) {
-    log.success('Working tree clean.');
+    log.success(t('Working tree clean.'));
     log.blank();
   }
 
-  log.info(pc.bold('Suggested next steps:'));
+  log.info(pc.bold(t('Suggested next steps:')));
   const tips = buildSuggestions(info, config, operation, releaseBranch);
   tips.forEach((tip, i) => log.info(`  ${pc.cyan(`${i + 1}.`)} ${tip}`));
   log.blank();

@@ -63,6 +63,38 @@ describe('non-interactive commands (agent-facing)', () => {
     await expect(branchCommand({ type: 'ghost', name: 'x' })).rejects.toThrow(/Unknown branch type/);
   });
 
+  it('commit refuses protected branches unless --allow-protected', async () => {
+    const r = repo();
+    r.writeFile('.gitwizrc.json', JSON.stringify({ mainBranch: 'main', developBranch: 'develop' }));
+    r.commit('chore: config');
+    r.git('branch', 'develop'); // main+develop distinct → main is protected
+
+    r.writeFile('a.txt', 'x');
+    await expect(commitCommand({ type: 'feat', message: 'x', all: true })).rejects.toThrow(/protected branch/);
+
+    await commitCommand({ type: 'feat', message: 'allowed', all: true, allowProtected: true });
+    expect(captureGit(['log', '-1', '--format=%s'])).toBe('feat: allowed');
+  });
+
+  it('release start works without a package.json (version from last tag)', async () => {
+    const r = repo({ initialCommit: false });
+    r.commit('feat: initial', {
+      '.gitwizrc.json': JSON.stringify({ mainBranch: 'main', developBranch: 'main', tagPrefix: 'v' }),
+      'main.py': 'print("hi")\n',
+    });
+    r.git('tag', '-a', 'v1.0.0', '-m', 'Release 1.0.0');
+    r.commit('feat: add feature', { 'main.py': 'print("hi v2")\n' });
+
+    await releaseStartCommand({ minor: true });
+    expect(getCurrentBranch()).toBe('release/1.1.0');
+    const changelog = captureGit(['show', 'HEAD:CHANGELOG.md']);
+    expect(changelog).toContain('## 1.1.0');
+    expect(changelog).toContain('add feature');
+
+    await releaseFinishCommand({ yes: true });
+    expect(tagExists('v1.1.0')).toBe(true);
+  });
+
   it('release start --minor then finish --yes run fully headless', async () => {
     const r = repo({ initialCommit: false });
     r.commit('feat: initial', {

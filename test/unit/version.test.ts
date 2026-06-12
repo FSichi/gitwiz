@@ -2,7 +2,26 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyVersion, bumpPreviews, readPackageVersion } from '../../src/core/version.js';
+import { applyVersion, bumpPreviews, readPackageVersion, suggestBump } from '../../src/core/version.js';
+
+describe('suggestBump', () => {
+  it('suggests major when any commit is breaking', () => {
+    expect(suggestBump([
+      { type: 'feat', breaking: false },
+      { type: 'fix', breaking: true },
+    ])).toBe('major');
+  });
+  it('suggests minor when there are features but no breaking changes', () => {
+    expect(suggestBump([
+      { type: 'fix', breaking: false },
+      { type: 'feat', breaking: false },
+    ])).toBe('minor');
+  });
+  it('suggests patch for fixes and everything else', () => {
+    expect(suggestBump([{ type: 'fix', breaking: false }])).toBe('patch');
+    expect(suggestBump([{ type: 'docs', breaking: false }, { type: null, breaking: false }])).toBe('patch');
+  });
+});
 
 describe('bumpPreviews', () => {
   it('computes major/minor/patch', () => {

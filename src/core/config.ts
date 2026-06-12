@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { GitwizError } from '../ui/errors.js';
+import { setLocale, type Locale } from '../ui/i18n.js';
 import {
   getRepoRoot,
   localBranchExists,
@@ -28,6 +29,10 @@ export interface GitwizConfig {
   mainBranch: string;
   developBranch: string;
   tagPrefix: string;
+  /** Wizard language; 'auto' follows the system locale. GITWIZ_LANG env overrides. */
+  language: Locale | 'auto';
+  /** Branches gitwiz commit warns about committing to directly. */
+  protectedBranches: string[];
   branchTypes: BranchType[];
   commitTypes: CommitType[];
   release: {
@@ -73,6 +78,8 @@ function builtinDefaults(): GitwizConfig {
     mainBranch: 'main',
     developBranch: 'main',
     tagPrefix: 'v',
+    language: 'auto',
+    protectedBranches: [],
     branchTypes: structuredClone(DEFAULT_BRANCH_TYPES),
     commitTypes: structuredClone(DEFAULT_COMMIT_TYPES),
     release: {
@@ -105,19 +112,46 @@ export function detectDevelopBranch(mainBranch: string, opts: GitOptions = {}): 
 }
 
 // ---------------------------------------------------------------------------
-// Validation
+// Validation (user entries may be PARTIAL — they merge over the defaults)
 // ---------------------------------------------------------------------------
+
+interface BranchTypeOverride {
+  type: string;
+  prefix?: string;
+  description?: string;
+  base?: 'develop' | 'main';
+  hidden?: boolean;
+}
+
+interface CommitTypeOverride {
+  type: string;
+  emoji?: string;
+  description?: string;
+  changelogSection?: string | false;
+  hidden?: boolean;
+}
+
+interface UserConfig {
+  mainBranch?: string;
+  developBranch?: string;
+  tagPrefix?: string;
+  language?: Locale | 'auto';
+  protectedBranches?: string[];
+  branchTypes?: BranchTypeOverride[];
+  commitTypes?: CommitTypeOverride[];
+  release?: GitwizConfig['release'];
+}
 
 function fail(path: string, expected: string): never {
   throw new GitwizError(`Invalid gitwiz config: "${path}" must be ${expected}.`);
 }
 
-function validateUserConfig(raw: unknown, origin: string): Partial<GitwizConfig> {
+function validateUserConfig(raw: unknown, origin: string): UserConfig {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     throw new GitwizError(`Invalid gitwiz config in ${origin}: expected an object.`);
   }
   const cfg = raw as Record<string, unknown>;
-  const out: Partial<GitwizConfig> = {};
+  const out: UserConfig = {};
 
   for (const key of ['mainBranch', 'developBranch', 'tagPrefix'] as const) {
     if (cfg[key] !== undefined) {
@@ -127,21 +161,35 @@ function validateUserConfig(raw: unknown, origin: string): Partial<GitwizConfig>
     }
   }
 
+  if (cfg.language !== undefined) {
+    if (cfg.language !== 'en' && cfg.language !== 'es' && cfg.language !== 'auto') {
+      fail('language', '"en", "es" or "auto"');
+    }
+    out.language = cfg.language;
+  }
+
+  if (cfg.protectedBranches !== undefined) {
+    if (!Array.isArray(cfg.protectedBranches) || cfg.protectedBranches.some((b) => typeof b !== 'string')) {
+      fail('protectedBranches', 'an array of branch names');
+    }
+    out.protectedBranches = cfg.protectedBranches as string[];
+  }
+
   if (cfg.branchTypes !== undefined) {
     if (!Array.isArray(cfg.branchTypes)) fail('branchTypes', 'an array');
     out.branchTypes = cfg.branchTypes.map((entry, i) => {
       const e = entry as Record<string, unknown>;
-      if (typeof e?.type !== 'string' || typeof e?.prefix !== 'string') {
-        fail(`branchTypes[${i}]`, 'an object with string "type" and "prefix"');
-      }
+      if (typeof e?.type !== 'string' || e.type.trim() === '') fail(`branchTypes[${i}].type`, 'a string');
+      if (e.prefix !== undefined && typeof e.prefix !== 'string') fail(`branchTypes[${i}].prefix`, 'a string');
       if (e.base !== undefined && e.base !== 'develop' && e.base !== 'main') {
         fail(`branchTypes[${i}].base`, '"develop" or "main"');
       }
       return {
         type: e.type as string,
-        prefix: e.prefix as string,
-        description: typeof e.description === 'string' ? e.description : '',
-        base: (e.base as 'develop' | 'main' | undefined) ?? 'develop',
+        prefix: e.prefix as string | undefined,
+        description: typeof e.description === 'string' ? e.description : undefined,
+        base: e.base as 'develop' | 'main' | undefined,
+        hidden: e.hidden === true,
       };
     });
   }
@@ -150,7 +198,7 @@ function validateUserConfig(raw: unknown, origin: string): Partial<GitwizConfig>
     if (!Array.isArray(cfg.commitTypes)) fail('commitTypes', 'an array');
     out.commitTypes = cfg.commitTypes.map((entry, i) => {
       const e = entry as Record<string, unknown>;
-      if (typeof e?.type !== 'string') fail(`commitTypes[${i}].type`, 'a string');
+      if (typeof e?.type !== 'string' || e.type.trim() === '') fail(`commitTypes[${i}].type`, 'a string');
       if (
         e.changelogSection !== undefined &&
         e.changelogSection !== false &&
@@ -160,9 +208,10 @@ function validateUserConfig(raw: unknown, origin: string): Partial<GitwizConfig>
       }
       return {
         type: e.type as string,
-        emoji: typeof e.emoji === 'string' ? e.emoji : '•',
-        description: typeof e.description === 'string' ? e.description : '',
-        changelogSection: (e.changelogSection as string | false | undefined) ?? false,
+        emoji: typeof e.emoji === 'string' ? e.emoji : undefined,
+        description: typeof e.description === 'string' ? e.description : undefined,
+        changelogSection: e.changelogSection as string | false | undefined,
+        hidden: e.hidden === true,
       };
     });
   }
@@ -170,19 +219,71 @@ function validateUserConfig(raw: unknown, origin: string): Partial<GitwizConfig>
   if (cfg.release !== undefined) {
     const r = cfg.release as Record<string, unknown>;
     if (typeof r !== 'object' || r === null) fail('release', 'an object');
-    out.release = {
-      alsoMergeToMain: typeof r.alsoMergeToMain === 'boolean' ? r.alsoMergeToMain : false,
-      changelogFile: typeof r.changelogFile === 'string' ? r.changelogFile : 'CHANGELOG.md',
-    };
     if (r.alsoMergeToMain !== undefined && typeof r.alsoMergeToMain !== 'boolean') {
       fail('release.alsoMergeToMain', 'a boolean');
     }
     if (r.changelogFile !== undefined && typeof r.changelogFile !== 'string') {
       fail('release.changelogFile', 'a string');
     }
+    out.release = {
+      alsoMergeToMain: typeof r.alsoMergeToMain === 'boolean' ? r.alsoMergeToMain : false,
+      changelogFile: typeof r.changelogFile === 'string' ? r.changelogFile : 'CHANGELOG.md',
+    };
   }
 
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Merge: user entries extend/override the defaults instead of replacing them.
+// An entry whose `type` matches a default overrides just the fields it sets;
+// a new `type` is appended; `"hidden": true` removes it from the list.
+// ---------------------------------------------------------------------------
+
+function definedProps<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}
+
+export function mergeBranchTypes(defaults: BranchType[], overrides: BranchTypeOverride[]): BranchType[] {
+  const merged = defaults.map((d) => ({ ...d, hidden: false }));
+  for (const override of overrides) {
+    const { hidden = false, ...rest } = override;
+    const existing = merged.find((m) => m.type === override.type);
+    if (existing) {
+      Object.assign(existing, definedProps(rest), { hidden });
+    } else {
+      merged.push({
+        type: override.type,
+        prefix: override.prefix ?? `${override.type}/`,
+        description: override.description ?? '',
+        base: override.base ?? 'develop',
+        hidden,
+      });
+    }
+  }
+  return merged.filter((m) => !m.hidden).map(({ hidden: _hidden, ...entry }) => entry);
+}
+
+export function mergeCommitTypes(defaults: CommitType[], overrides: CommitTypeOverride[]): CommitType[] {
+  const merged = defaults.map((d) => ({ ...d, hidden: false }));
+  for (const override of overrides) {
+    const { hidden = false, ...rest } = override;
+    const existing = merged.find((m) => m.type === override.type);
+    if (existing) {
+      Object.assign(existing, definedProps(rest), { hidden });
+    } else {
+      merged.push({
+        type: override.type,
+        emoji: override.emoji ?? '•',
+        description: override.description ?? '',
+        changelogSection: override.changelogSection ?? false,
+        hidden,
+      });
+    }
+  }
+  return merged.filter((m) => !m.hidden).map(({ hidden: _hidden, ...entry }) => entry);
 }
 
 // ---------------------------------------------------------------------------
@@ -223,9 +324,22 @@ export function loadConfig(opts: GitOptions = {}): ResolvedConfig {
   config.developBranch =
     userConfig.developBranch ?? detectDevelopBranch(config.mainBranch, opts);
   if (userConfig.tagPrefix !== undefined) config.tagPrefix = userConfig.tagPrefix;
-  if (userConfig.branchTypes) config.branchTypes = userConfig.branchTypes;
-  if (userConfig.commitTypes) config.commitTypes = userConfig.commitTypes;
+  if (userConfig.language !== undefined) config.language = userConfig.language;
+  if (userConfig.branchTypes) {
+    config.branchTypes = mergeBranchTypes(config.branchTypes, userConfig.branchTypes);
+  }
+  if (userConfig.commitTypes) {
+    config.commitTypes = mergeCommitTypes(config.commitTypes, userConfig.commitTypes);
+  }
   if (userConfig.release) config.release = userConfig.release;
+
+  // Protected branches: explicit list wins; otherwise guard main + develop when
+  // they are distinct (in trunk mode committing to main is the normal flow).
+  config.protectedBranches =
+    userConfig.protectedBranches ??
+    (config.mainBranch !== config.developBranch ? [config.mainBranch, config.developBranch] : []);
+
+  setLocale(config.language);
 
   return { config, source: user?.source ?? 'detected', repoRoot };
 }

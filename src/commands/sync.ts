@@ -13,6 +13,7 @@ import {
   tryRunGit,
 } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
+import { t } from '../ui/i18n.js';
 import { log } from '../ui/output.js';
 import { assertInteractive, confirm, select } from '../ui/prompts.js';
 
@@ -29,14 +30,14 @@ function findBaseBranch(branch: string, config: GitwizConfig): string | null {
 
 function conflictError(operation: 'merge' | 'rebase', stashed: boolean): GitwizError {
   const lines = [
-    `The ${operation} stopped because of conflicts. This is normal — git needs your help:`,
-    '  1. Open the conflicted files (run "gitwiz status" to list them) and fix the marked sections.',
-    '  2. Stage the fixed files:  git add <file>',
-    `  3. Continue with:          git ${operation} --continue`,
-    `  Or undo everything with:   git ${operation} --abort`,
+    t('The {operation} stopped because of conflicts. This is normal — git needs your help:', { operation }),
+    `  ${t('1. Open the conflicted files (run "gitwiz status" to list them) and fix the marked sections.')}`,
+    `  ${t('2. Stage the fixed files:  git add <file>')}`,
+    `  ${t('3. Continue with:          git {operation} --continue', { operation })}`,
+    `  ${t('Or undo everything with:   git {operation} --abort', { operation })}`,
   ];
   if (stashed) {
-    lines.push(`  Note: your local changes are stashed — recover them later with: git stash pop`);
+    lines.push(`  ${t('Note: your local changes are stashed — recover them later with: git stash pop')}`);
   }
   return new GitwizError(lines.join('\n'));
 }
@@ -48,8 +49,8 @@ export async function syncCommand(): Promise<void> {
 
   const current = getCurrentBranch();
   if (current === '') {
-    throw new GitwizError('You are not on any branch (detached HEAD).', {
-      hint: `Switch to a branch first: git switch ${config.developBranch}`,
+    throw new GitwizError(t('You are not on any branch (detached HEAD).'), {
+      hint: t('Switch to a branch first: git switch {branch}', { branch: config.developBranch }),
     });
   }
 
@@ -76,22 +77,28 @@ export async function syncCommand(): Promise<void> {
     if (counts) {
       log.blank();
       log.info(
-        `Your branch ${pc.bold(current)} is ${pc.green(`${counts.ahead} ahead`)} and ${
-          counts.behind > 0 ? pc.yellow(`${counts.behind} behind`) : pc.green('0 behind')
-        } ${pc.dim(baseRef)}.`,
+        t('Your branch {branch} is {ahead} and {behind} {base}.', {
+          branch: pc.bold(current),
+          ahead: pc.green(t('{n} ahead', { n: counts.ahead })),
+          behind:
+            counts.behind > 0
+              ? pc.yellow(t('{n} behind', { n: counts.behind }))
+              : pc.green(t('0 behind')),
+          base: pc.dim(baseRef),
+        }),
       );
       log.blank();
       if (counts.behind === 0) {
-        log.success(`Already up to date with ${baseRef}.`);
+        log.success(t('Already up to date with {base}.', { base: baseRef }));
       } else {
         choices.push(
           {
-            name: `Merge ${baseRef} into my branch ${pc.dim('(safe, recommended)')}`,
+            name: `${t('Merge {base} into my branch', { base: baseRef })} ${pc.dim(t('(safe, recommended)'))}`,
             value: 'merge',
             short: 'merge',
           },
           {
-            name: `Rebase my branch onto ${baseRef} ${pc.dim('(linear history — rewrites your commits)')}`,
+            name: `${t('Rebase my branch onto {base}', { base: baseRef })} ${pc.dim(t('(linear history — rewrites your commits)'))}`,
             value: 'rebase',
             short: 'rebase',
           },
@@ -102,7 +109,7 @@ export async function syncCommand(): Promise<void> {
       const baseCounts = getAheadBehind(`origin/${base}`, base);
       if (baseCounts && baseCounts.behind > 0) {
         choices.push({
-          name: `Just update my local copy of ${base} ${pc.dim(`(${baseCounts.behind} behind origin)`)}`,
+          name: `${t('Just update my local copy of {base}', { base })} ${pc.dim(t('({n} behind origin)', { n: baseCounts.behind }))}`,
           value: 'update-base',
           short: 'update base',
         });
@@ -114,7 +121,7 @@ export async function syncCommand(): Promise<void> {
     const ownCounts = getAheadBehind(upstream, 'HEAD');
     if (ownCounts && ownCounts.behind > 0) {
       choices.push({
-        name: `Pull my own branch from ${upstream} ${pc.dim(`(${ownCounts.behind} behind)`)}`,
+        name: `${t('Pull my own branch from {upstream}', { upstream })} ${pc.dim(t('({n} behind)', { n: ownCounts.behind }))}`,
         value: 'pull-own',
         short: 'pull',
       });
@@ -122,14 +129,14 @@ export async function syncCommand(): Promise<void> {
   }
 
   if (choices.length === 0) {
-    log.success('Everything is already in sync. Nothing to do.');
+    log.success(t('Everything is already in sync. Nothing to do.'));
     return;
   }
-  choices.push({ name: 'Do nothing', value: 'nothing', short: 'nothing' });
+  choices.push({ name: t('Do nothing'), value: 'nothing', short: t('nothing') });
 
-  const strategy = await select({ message: 'How do you want to sync?', choices });
+  const strategy = await select({ message: t('How do you want to sync?'), choices });
   if (strategy === 'nothing') {
-    log.dim('Nothing changed.');
+    log.dim(t('Nothing changed.'));
     return;
   }
 
@@ -137,11 +144,11 @@ export async function syncCommand(): Promise<void> {
   let stashed = false;
   if (strategy !== 'update-base' && !isWorkingTreeClean()) {
     const stash = await confirm({
-      message: 'You have uncommitted changes. Stash them safely and re-apply after syncing?',
+      message: t('You have uncommitted changes. Stash them safely and re-apply after syncing?'),
       default: true,
     });
     if (!stash) {
-      log.dim('Cancelled — commit or stash your changes first.');
+      log.dim(t('Cancelled — commit or stash your changes first.'));
       return;
     }
     runGit(['stash', 'push', '-u', '-m', STASH_MESSAGE]);
@@ -151,8 +158,8 @@ export async function syncCommand(): Promise<void> {
   const popStash = () => {
     if (!stashed) return;
     if (!tryRunGit(['stash', 'pop'])) {
-      log.warn('Your stashed changes could not be re-applied cleanly.');
-      log.dim('  Resolve the conflicts, then run: git stash drop');
+      log.warn(t('Your stashed changes could not be re-applied cleanly.'));
+      log.dim(`  ${t('Resolve the conflicts, then run: git stash drop')}`);
     }
   };
 
@@ -162,17 +169,17 @@ export async function syncCommand(): Promise<void> {
         throw conflictError('merge', stashed);
       }
       popStash();
-      log.success(`Merged ${baseRef} into ${current}.`);
+      log.success(t('Merged {base} into {branch}.', { base: baseRef!, branch: current }));
       break;
     }
     case 'rebase': {
       if (upstream) {
-        log.warn('This branch is already pushed — rebasing rewrites its history.');
-        log.dim('  You will need "git push --force-with-lease" afterwards, and teammates on this branch will be disrupted.');
-        const go = await confirm({ message: 'Rebase anyway?', default: false });
+        log.warn(t('This branch is already pushed — rebasing rewrites its history.'));
+        log.dim(`  ${t('You will need "git push --force-with-lease" afterwards, and teammates on this branch will be disrupted.')}`);
+        const go = await confirm({ message: t('Rebase anyway?'), default: false });
         if (!go) {
           popStash();
-          log.dim('Cancelled.');
+          log.dim(t('Cancelled.'));
           return;
         }
       }
@@ -180,29 +187,29 @@ export async function syncCommand(): Promise<void> {
         throw conflictError('rebase', stashed);
       }
       popStash();
-      log.success(`Rebased ${current} onto ${baseRef}.`);
-      if (upstream) log.dim('  Push with: git push --force-with-lease');
+      log.success(t('Rebased {branch} onto {base}.', { branch: current, base: baseRef! }));
+      if (upstream) log.dim(`  ${t('Push with: git push --force-with-lease')}`);
       break;
     }
     case 'update-base': {
       runGit(['switch', base!]);
       if (!tryRunGit(['pull', '--ff-only', 'origin', base!])) {
         runGit(['switch', current]);
-        throw new GitwizError(`Could not fast-forward ${base} — it has diverged from origin.`);
+        throw new GitwizError(t('Could not fast-forward {base} — it has diverged from origin.', { base: base! }));
       }
       runGit(['switch', current]);
-      log.success(`Local ${base} is now up to date.`);
+      log.success(t('Local {base} is now up to date.', { base: base! }));
       break;
     }
     case 'pull-own': {
       if (!tryRunGit(['pull', '--ff-only'])) {
         popStash();
-        throw new GitwizError('Could not fast-forward — your branch and its remote have diverged.', {
-          hint: 'Run "gitwiz sync" again and choose merge or rebase against the base, or ask a teammate for help.',
+        throw new GitwizError(t('Could not fast-forward — your branch and its remote have diverged.'), {
+          hint: t('Run "gitwiz sync" again and choose merge or rebase against the base, or ask a teammate for help.'),
         });
       }
       popStash();
-      log.success(`Pulled latest ${current}.`);
+      log.success(t('Pulled latest {branch}.', { branch: current }));
       break;
     }
   }

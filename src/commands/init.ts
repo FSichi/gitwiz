@@ -13,36 +13,51 @@ import {
   tryCaptureGit,
 } from '../core/git.js';
 import { rewriteJson } from '../core/json-file.js';
+import { setLocale, t, type Locale } from '../ui/i18n.js';
 import { log } from '../ui/output.js';
-import { confirm, input, select } from '../ui/prompts.js';
+import { assertInteractive, confirm, input, select } from '../ui/prompts.js';
 
 export async function initCommand(): Promise<void> {
+  assertInteractive();
+
   if (!isGitRepo()) {
     const create = await confirm({
-      message: 'This folder is not a git repository yet. Initialize one here?',
+      message: t('This folder is not a git repository yet. Initialize one here?'),
       default: true,
     });
     if (!create) {
-      log.dim('Cancelled.');
+      log.dim(t('Cancelled.'));
       return;
     }
     runGit(['init', '-b', 'main']);
   }
 
   const repoRoot = getRepoRoot();
+
+  // Language first, so the rest of the wizard speaks it.
+  const language = await select<Locale | 'auto'>({
+    message: 'Language / Idioma:',
+    choices: [
+      { name: 'Auto (system / sistema)', value: 'auto' },
+      { name: 'English', value: 'en' },
+      { name: 'Español', value: 'es' },
+    ],
+  });
+  setLocale(language);
+
   const detectedMain = detectMainBranch();
   const detectedDevelop = detectDevelopBranch(detectedMain);
 
   const mainBranch = await input({
-    message: `Production branch ${pc.dim('(your stable, deployed code)')}: `,
+    message: `${t('Production branch')} ${pc.dim(t('(your stable, deployed code)'))}: `,
     default: detectedMain,
   });
   const developBranch = await input({
-    message: `Work base branch ${pc.dim('(where new branches start; same as production = trunk-based)')}: `,
+    message: `${t('Work base branch')} ${pc.dim(t('(where new branches start; same as production = trunk-based)'))}: `,
     default: detectedDevelop,
   });
   const tagPrefix = await input({
-    message: `Release tag prefix ${pc.dim('("v" tags releases as v1.2.3; leave empty for 1.2.3)')}: `,
+    message: `${t('Release tag prefix')} ${pc.dim(t('("v" tags releases as v1.2.3; leave empty for 1.2.3)'))}: `,
     default: 'v',
   });
 
@@ -50,19 +65,19 @@ export async function initCommand(): Promise<void> {
   const hasCommits = tryCaptureGit(['rev-parse', 'HEAD']) !== null;
   if (developBranch !== mainBranch && !localBranchExists(developBranch)) {
     if (remoteBranchExists(developBranch)) {
-      log.dim(`Branch ${developBranch} exists on origin — it will be used when needed.`);
+      log.dim(t('Branch {branch} exists on origin — it will be used when needed.', { branch: developBranch }));
     } else if (!hasCommits) {
-      log.warn(`No commits yet — make your first commit, then create ${developBranch}.`);
+      log.warn(t('No commits yet — make your first commit, then create {branch}.', { branch: developBranch }));
     } else if (localBranchExists(mainBranch)) {
       const create = await confirm({
-        message: `Branch "${developBranch}" does not exist. Create it from ${mainBranch}?`,
+        message: t('Branch "{branch}" does not exist. Create it from {main}?', { branch: developBranch, main: mainBranch }),
         default: true,
       });
       if (create) {
         runGit(['branch', developBranch, mainBranch]);
         if (hasRemote()) {
           const push = await confirm({
-            message: `Push ${developBranch} to origin?`,
+            message: t('Push {branch} to origin?', { branch: developBranch }),
             default: true,
           });
           if (push) runGit(['push', '-u', 'origin', developBranch]);
@@ -71,34 +86,35 @@ export async function initCommand(): Promise<void> {
     }
   }
 
-  const settings = { mainBranch, developBranch, tagPrefix };
+  const settings: Record<string, unknown> = { mainBranch, developBranch, tagPrefix };
+  if (language !== 'auto') settings.language = language;
 
   // Choose where the config lives.
   const pkgPath = join(repoRoot, 'package.json');
   let destination: 'rc' | 'package.json' = 'rc';
   if (existsSync(pkgPath)) {
     destination = await select({
-      message: 'Where should the gitwiz config be saved?',
+      message: t('Where should the gitwiz config be saved?'),
       choices: [
-        { name: `${RC_FILENAME} ${pc.dim('(recommended — its own file)')}`, value: 'rc' as const },
-        { name: 'package.json ("gitwiz" key)', value: 'package.json' as const },
+        { name: `${RC_FILENAME} ${pc.dim(t('(recommended — its own file)'))}`, value: 'rc' as const },
+        { name: t('package.json ("gitwiz" key)'), value: 'package.json' as const },
       ],
     });
   }
 
   if (destination === 'rc') {
     writeFileSync(join(repoRoot, RC_FILENAME), `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
-    log.success(`Saved ${RC_FILENAME}`);
+    log.success(t('Saved {file}', { file: RC_FILENAME }));
   } else {
     rewriteJson(pkgPath, (pkg) => {
       pkg.gitwiz = settings;
     });
-    log.success('Saved "gitwiz" key in package.json');
+    log.success(t('Saved "gitwiz" key in package.json'));
   }
 
   // Offer to drop AI-agent instructions so coding agents follow this workflow.
   const addAgents = await confirm({
-    message: 'Add an AGENTS.md so AI coding agents follow this git workflow?',
+    message: t('Add an AGENTS.md so AI coding agents follow this git workflow?'),
     default: true,
   });
   if (addAgents) {
@@ -109,14 +125,14 @@ export async function initCommand(): Promise<void> {
       block,
       '# AGENTS.md\n\nInstructions for AI coding agents working in this repository.',
     );
-    log.success(`${result === 'created' ? 'Created' : 'Updated'} AGENTS.md`);
+    log.success(result === 'created' ? t('Created AGENTS.md') : t('Updated AGENTS.md'));
   }
 
   log.blank();
-  log.info(pc.bold('Setup complete:'));
-  log.info(`  Production branch:  ${pc.cyan(mainBranch)}`);
-  log.info(`  Work base branch:   ${pc.cyan(developBranch)}`);
-  log.info(`  Release tags:       ${pc.cyan(`${tagPrefix}1.2.3`)}`);
+  log.info(pc.bold(t('Setup complete:')));
+  log.info(`  ${t('Production branch:')}  ${pc.cyan(mainBranch)}`);
+  log.info(`  ${t('Work base branch:')}   ${pc.cyan(developBranch)}`);
+  log.info(`  ${t('Release tags:')}       ${pc.cyan(`${tagPrefix}1.2.3`)}`);
   log.blank();
-  log.dim('  Next: run "gitwiz branch" to start working, or "gitwiz status" anytime you feel lost.');
+  log.dim(`  ${t('Next: run "gitwiz branch" to start working, or "gitwiz status" anytime you feel lost.')}`);
 }

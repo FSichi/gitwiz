@@ -19,6 +19,8 @@ function config(over: Partial<GitwizConfig> = {}): GitwizConfig {
     mainBranch: 'main',
     developBranch: 'develop',
     tagPrefix: 'v',
+    language: 'auto',
+    protectedBranches: ['main', 'develop'],
     branchTypes: DEFAULT_BRANCH_TYPES,
     commitTypes: DEFAULT_COMMIT_TYPES,
     release: { alsoMergeToMain: false, changelogFile: 'CHANGELOG.md' },
@@ -54,6 +56,13 @@ describe('buildAgentInstructions', () => {
     expect(block).toContain('gitwiz commit --type feat');
     expect(block).toContain('gitwiz release start --minor');
     expect(block).toContain('gitwiz release finish --yes');
+  });
+
+  it('mentions protected branches when configured', () => {
+    const block = buildAgentInstructions(config());
+    expect(block).toContain('Never commit directly to `main`, `develop`');
+    const none = buildAgentInstructions(config({ protectedBranches: [] }));
+    expect(none).not.toContain('Never commit directly');
   });
 });
 

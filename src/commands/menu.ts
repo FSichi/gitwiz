@@ -1,4 +1,5 @@
 import pc from 'picocolors';
+import { t } from '../ui/i18n.js';
 import { log } from '../ui/output.js';
 import { select } from '../ui/prompts.js';
 import { branchCommand } from './branch.js';
@@ -6,6 +7,7 @@ import { commitCommand } from './commit.js';
 import { initCommand } from './init.js';
 import { releaseFinishCommand } from './release-finish.js';
 import { releaseStartCommand } from './release-start.js';
+import { stashCommand } from './stash.js';
 import { statusCommand } from './status.js';
 import { syncCommand } from './sync.js';
 import { undoCommand } from './undo.js';
@@ -16,6 +18,7 @@ type MenuAction =
   | 'branch'
   | 'sync'
   | 'undo'
+  | 'stash'
   | 'release-start'
   | 'release-finish'
   | 'init'
@@ -25,19 +28,20 @@ type MenuAction =
 export async function menuCommand(): Promise<void> {
   log.blank();
   const action = await select<MenuAction>({
-    message: 'What do you want to do?',
+    message: t('What do you want to do?'),
     choices: [
-      { name: `status           ${pc.dim('— where am I and what to do next')}`, value: 'status' },
-      { name: `commit           ${pc.dim('— create a guided commit')}`, value: 'commit' },
-      { name: `branch           ${pc.dim('— start a new work branch')}`, value: 'branch' },
-      { name: `sync             ${pc.dim('— update my branch safely')}`, value: 'sync' },
-      { name: `undo             ${pc.dim('— undo something safely')}`, value: 'undo' },
-      { name: `release start    ${pc.dim('— bump version + changelog')}`, value: 'release-start' },
-      { name: `release finish   ${pc.dim('— merge, tag, publish')}`, value: 'release-finish' },
-      { name: `init             ${pc.dim('— set up gitwiz here')}`, value: 'init' },
-      { name: pc.dim('exit'), value: 'exit' },
+      { name: `status           ${pc.dim(t('— where am I and what to do next'))}`, value: 'status' },
+      { name: `commit           ${pc.dim(t('— create a guided commit'))}`, value: 'commit' },
+      { name: `branch           ${pc.dim(t('— start a new work branch'))}`, value: 'branch' },
+      { name: `sync             ${pc.dim(t('— update my branch safely'))}`, value: 'sync' },
+      { name: `undo             ${pc.dim(t('— undo something safely'))}`, value: 'undo' },
+      { name: `stash            ${pc.dim(t('— set changes aside for later'))}`, value: 'stash' },
+      { name: `release start    ${pc.dim(t('— bump version + changelog'))}`, value: 'release-start' },
+      { name: `release finish   ${pc.dim(t('— merge, tag, publish'))}`, value: 'release-finish' },
+      { name: `init             ${pc.dim(t('— set up gitwiz here'))}`, value: 'init' },
+      { name: pc.dim(t('exit')), value: 'exit' },
     ],
-    pageSize: 10,
+    pageSize: 11,
   });
 
   switch (action) {
@@ -56,6 +60,9 @@ export async function menuCommand(): Promise<void> {
     case 'undo':
       await undoCommand();
       return;
+    case 'stash':
+      await stashCommand();
+      return;
     case 'release-start':
       await releaseStartCommand();
       return;
@@ -66,7 +73,7 @@ export async function menuCommand(): Promise<void> {
       await initCommand();
       return;
     case 'exit':
-      log.dim('Bye!');
+      log.dim(t('Bye!'));
       return;
   }
 }
