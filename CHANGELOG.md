@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0](https://github.com/FSichi/gitwiz/compare/v0.4.1...v0.5.0) (2026-06-12)
+
+### Features
+
+* bilingual UI, stash wizard, smarter releases, and config merging ([f050913](https://github.com/FSichi/gitwiz/commit/f050913b561e30db32671f8e6612e168e692f06a))
+
 ## [0.4.1](https://github.com/FSichi/gitwiz/compare/v0.4.0...v0.4.1) (2026-06-12)
 
 _No notable changes._
