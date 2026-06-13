@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" font-family="ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#161b22"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="20" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+    <clipPath id="terminal-clip">
+      <rect x="50" y="90" width="700" height="420"/>
+    </clipPath>
+    <clipPath id="type1-clip">
+      <rect x="116" y="128" width="0" height="20">
+        <animate attributeName="width" from="0" to="200" dur="1s" begin="0.3s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+      </rect>
+    </clipPath>
+    <clipPath id="type2-clip">
+      <rect x="116" y="128" width="0" height="20">
+        <animate attributeName="width" from="0" to="220" dur="1s" begin="11.5s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+      </rect>
+    </clipPath>
+  </defs>
+
+  <style>
+    .line { opacity: 0; }
+    @keyframes cursorBlink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .cursor { animation: cursorBlink 1s step-end infinite; }
+
+    /* Phase 1 lines — ~1s apart */
+    .p1a { animation: fadeUp 0.3s ease-out 1.6s forwards; opacity: 0; }
+    .p1b { animation: fadeUp 0.3s ease-out 2.6s forwards; opacity: 0; }
+    .p1c { animation: fadeUp 0.3s ease-out 3.6s forwards; opacity: 0; }
+    .p1d { animation: fadeUp 0.3s ease-out 4.6s forwards; opacity: 0; }
+    .p1e { animation: fadeUp 0.3s ease-out 5.6s forwards; opacity: 0; }
+    .p1f { animation: fadeUp 0.3s ease-out 6.6s forwards; opacity: 0; }
+    .p1g { animation: fadeUp 0.3s ease-out 7.6s forwards; opacity: 0; }
+    .p1h { animation: fadeUp 0.3s ease-out 8.6s forwards; opacity: 0; }
+    .p1i { animation: fadeUp 0.3s ease-out 9.6s forwards; opacity: 0; }
+
+    .phase1 { animation: fadeOut 0.5s ease-out 11.0s forwards; }
+
+    .phase2 { animation: fadeIn 0.3s ease-out 11.8s forwards; opacity: 0; }
+    .p2a { animation: fadeUp 0.3s ease-out 12.0s forwards; opacity: 0; }
+    .p2b { animation: fadeUp 0.3s ease-out 13.0s forwards; opacity: 0; }
+    .p2c { animation: fadeUp 0.3s ease-out 14.0s forwards; opacity: 0; }
+    .p2d { animation: fadeUp 0.3s ease-out 15.0s forwards; opacity: 0; }
+    .p2e { animation: fadeUp 0.3s ease-out 16.0s forwards; opacity: 0; }
+    .p2f { animation: fadeUp 0.3s ease-out 17.0s forwards; opacity: 0; }
+
+    .option-box { opacity: 0; animation: fadeIn 0.3s ease-out 6.6s forwards; }
+    .option-selected { opacity: 0; animation: fadeIn 0.15s ease-out 8.0s forwards; }
+
+    .success-check { opacity: 0; animation: fadeUp 0.3s ease-out 9.0s forwards; }
+  </style>
+
+  <!-- Background -->
+  <rect width="800" height="520" fill="url(#bg)"/>
+
+  <!-- Terminal -->
+  <rect x="50" y="30" width="700" height="460" rx="12" fill="#0d1117" stroke="#30363d" stroke-width="1.5" filter="url(#shadow)"/>
+
+  <!-- Title bar -->
+  <rect x="50" y="30" width="700" height="42" rx="12" fill="#161b22"/>
+  <rect x="50" y="82" width="700" height="1" fill="#30363d"/>
+  <circle cx="74" cy="51" r="6" fill="#ff5f57"/>
+  <circle cx="94" cy="51" r="6" fill="#febc2e"/>
+  <circle cx="114" cy="51" r="6" fill="#28c840"/>
+  <text x="400" y="56" fill="#8b949e" text-anchor="middle" font-size="13">gitwiz release workflow</text>
+
+  <!-- ===== PHASE 1 ===== -->
+  <g class="phase1" clip-path="url(#terminal-clip)">
+
+    <!-- Phase 1 label -->
+    <g style="opacity: 1;">
+      <rect x="80" y="100" width="72" height="20" rx="4" fill="#238636" opacity="0.25"/>
+      <text x="116" y="114" fill="#7ee787" text-anchor="middle" font-size="10" font-weight="700">PHASE 1</text>
+      <text x="162" y="114" fill="#484f58" font-size="11">gitwiz release start</text>
+    </g>
+
+    <!-- Typing command: cursor appears while typing, then hides -->
+    <g style="opacity: 1;">
+      <text x="100" y="142" fill="#7ee787" font-size="13">$</text>
+      <text x="116" y="142" fill="#e6edf3" font-size="13" clip-path="url(#type1-clip)">gitwiz release start</text>
+      <!-- Typing cursor: visible 0.3s-1.3s, then hidden -->
+      <rect x="116" y="131" width="8" height="14" fill="#7ee787">
+        <animate attributeName="opacity" values="1;1;0" keyTimes="0;0.95;1" dur="1.4s" begin="0.3s" fill="freeze"/>
+        <animateTransform attributeName="transform" type="translate" from="0 0" to="200 0" dur="1s" begin="0.3s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+      </rect>
+    </g>
+
+    <!-- Checking status -->
+    <g class="line p1a">
+      <text x="116" y="168" fill="#8b949e" font-size="12">Checking release status...</text>
+    </g>
+
+    <!-- Updating develop -->
+    <g class="line p1b">
+      <text x="116" y="188" fill="#8b949e" font-size="12">Updating develop branch...</text>
+    </g>
+
+    <!-- Suggested bump prompt -->
+    <g class="line p1c">
+      <rect x="114" y="198" width="520" height="26" rx="5" fill="#161b22" stroke="#21262d"/>
+      <text x="130" y="216" fill="#a5d6ff" font-size="12">?</text>
+      <text x="146" y="216" fill="#e6edf3" font-size="12">Suggested bump: </text>
+      <text x="272" y="216" fill="#79c0ff" font-size="12" font-weight="600">minor</text>
+      <text x="314" y="216" fill="#484f58" font-size="11">(2 feat, 1 fix since v1.2.0)</text>
+    </g>
+
+    <!-- Version prompt -->
+    <g class="line p1d">
+      <rect x="114" y="232" width="520" height="26" rx="5" fill="#161b22" stroke="#21262d"/>
+      <text x="130" y="250" fill="#a5d6ff" font-size="12">?</text>
+      <text x="146" y="250" fill="#e6edf3" font-size="12">New version: </text>
+      <text x="248" y="250" fill="#79c0ff" font-size="12" font-weight="600">1.3.0</text>
+    </g>
+
+    <!-- Changelog preview -->
+    <g class="line p1e">
+      <rect x="114" y="266" width="520" height="60" rx="5" fill="#161b22" stroke="#21262d"/>
+      <text x="130" y="284" fill="#8b949e" font-size="11">CHANGELOG.md</text>
+      <text x="130" y="300" fill="#7ee787" font-size="11">## [1.3.0]</text>
+      <text x="130" y="314" fill="#e6edf3" font-size="11">### Features</text>
+      <text x="130" y="326" fill="#8b949e" font-size="11">  • auth: add password reset (abc1234)</text>
+    </g>
+
+    <!-- Create release options -->
+    <g class="option-box">
+      <rect x="114" y="336" width="520" height="26" rx="5" fill="#161b22" stroke="#21262d"/>
+      <text x="130" y="354" fill="#a5d6ff" font-size="12">?</text>
+      <text x="146" y="354" fill="#e6edf3" font-size="12">Create release </text>
+      <text x="252" y="354" fill="#79c0ff" font-size="12" font-weight="600">release/1.3.0</text>
+      <text x="370" y="354" fill="#484f58" font-size="11">?</text>
+    </g>
+
+    <!-- Options list -->
+    <g class="option-box" style="animation-delay: 7.2s;">
+      <rect x="146" y="366" width="60" height="22" rx="4" fill="#21262d" stroke="#30363d"/>
+      <text x="176" y="381" fill="#e6edf3" text-anchor="middle" font-size="11">Yes</text>
+      <rect x="216" y="366" width="60" height="22" rx="4" fill="#21262d" stroke="#30363d"/>
+      <text x="246" y="381" fill="#e6edf3" text-anchor="middle" font-size="11">No</text>
+    </g>
+
+    <!-- Selected option highlight -->
+    <g class="option-selected" style="animation-delay: 8.0s;">
+      <rect x="144" y="364" width="64" height="26" rx="5" fill="#238636" stroke="#2ea043">
+        <animate attributeName="fill" values="#238636;#2ea043;#238636" dur="1.5s" repeatCount="indefinite"/>
+      </rect>
+      <text x="176" y="382" fill="#fff" text-anchor="middle" font-size="11" font-weight="600">Yes</text>
+    </g>
+
+    <!-- Success: branch created -->
+    <g class="success-check">
+      <text x="116" y="410" fill="#7ee787" font-size="12">✔ Branch release/1.3.0 created</text>
+    </g>
+
+    <!-- Cursor at bottom -->
+    <g style="opacity: 1;">
+      <text x="100" y="434" fill="#7ee787" font-size="13">$</text>
+      <rect x="116" y="423" width="8" height="14" fill="#7ee787" class="cursor"/>
+    </g>
+
+  </g>
+
+  <!-- ===== PHASE 2 ===== -->
+  <g class="phase2" clip-path="url(#terminal-clip)">
+
+    <!-- Phase 2 label -->
+    <g class="line p2a">
+      <rect x="80" y="100" width="72" height="20" rx="4" fill="#58a6ff" opacity="0.2"/>
+      <text x="116" y="114" fill="#58a6ff" text-anchor="middle" font-size="10" font-weight="700">PHASE 2</text>
+      <text x="162" y="114" fill="#484f58" font-size="11">gitwiz release finish</text>
+    </g>
+
+    <!-- Typing command: cursor visible while typing, then hidden -->
+    <g style="opacity: 1;">
+      <text x="100" y="142" fill="#7ee787" font-size="13">$</text>
+      <text x="116" y="142" fill="#e6edf3" font-size="13" clip-path="url(#type2-clip)">gitwiz release finish</text>
+      <!-- Typing cursor: visible 11.5s-12.5s, then hidden -->
+      <rect x="116" y="131" width="8" height="14" fill="#7ee787">
+        <animate attributeName="opacity" values="1;1;0" keyTimes="0;0.95;1" dur="1.4s" begin="11.5s" fill="freeze"/>
+        <animateTransform attributeName="transform" type="translate" from="0 0" to="220 0" dur="1s" begin="11.5s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+      </rect>
+    </g>
+
+    <!-- Status lines -->
+    <g class="line p2c">
+      <text x="116" y="168" fill="#8b949e" font-size="12">Merging release/1.3.0 into develop...</text>
+    </g>
+    <g class="line p2d">
+      <text x="116" y="188" fill="#8b949e" font-size="12">Creating tag v1.3.0...</text>
+    </g>
+    <g class="line p2e">
+      <text x="116" y="208" fill="#8b949e" font-size="12">Pushing to origin...</text>
+    </g>
+
+    <!-- Success -->
+    <g class="line p2f">
+      <text x="116" y="236" fill="#7ee787" font-size="12">✔ Release v1.3.0 shipped!</text>
+    </g>
+
+    <!-- Cursor -->
+    <g class="line p2f">
+      <text x="100" y="264" fill="#7ee787" font-size="13">$</text>
+      <rect x="116" y="253" width="8" height="14" fill="#7ee787" class="cursor"/>
+    </g>
+
+  </g>
+
+  <!-- Footer -->
+  <text x="400" y="554" fill="#58a6ff" text-anchor="middle" font-size="12" font-weight="600">github.com/facusichi/gitwiz</text>
+</svg>

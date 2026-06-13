@@ -7,6 +7,12 @@
 <p align="center">
   <img src="docs/demo.svg" alt="gitwiz commit demo" width="720">
 </p>
+<p align="center">
+  <img src="docs/showcase.svg" alt="gitwiz commit demo" width="720">
+</p>
+<p align="center">
+  <img src="docs/release.svg" alt="gitwiz commit demo" width="720">
+</p>
 
 ## Install
 

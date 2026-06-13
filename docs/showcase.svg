@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" font-family="ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#161b22"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="20" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <style>
+    .line { opacity: 0; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+    .a1 { animation: fadeUp 0.4s ease-out 0.4s forwards; }
+    .a2 { animation: fadeUp 0.4s ease-out 0.7s forwards; }
+    .a3 { animation: fadeUp 0.4s ease-out 1.0s forwards; }
+    .a4 { animation: fadeUp 0.4s ease-out 1.3s forwards; }
+    .a5 { animation: fadeUp 0.4s ease-out 1.6s forwards; }
+    .a6 { animation: fadeUp 0.4s ease-out 1.9s forwards; }
+    .a7 { animation: fadeUp 0.4s ease-out 2.2s forwards; }
+    .a8 { animation: fadeUp 0.4s ease-out 2.5s forwards; }
+    .a9 { animation: fadeUp 0.4s ease-out 2.8s forwards; }
+    .ar { animation: fadeUp 0.4s ease-out 3.2s forwards; }
+    .cur { animation: blink 1s step-end infinite; }
+  </style>
+
+  <!-- Background -->
+  <rect width="900" height="560" fill="url(#bg)"/>
+
+  <!-- Terminal -->
+  <rect x="60" y="40" width="780" height="480" rx="14" fill="#0d1117" stroke="#30363d" stroke-width="1.5" filter="url(#shadow)"/>
+
+  <!-- Title bar -->
+  <rect x="60" y="40" width="780" height="44" rx="14" fill="#161b22"/>
+  <rect x="60" y="85" width="780" height="1" fill="#30363d"/>
+  <circle cx="86" cy="62" r="6" fill="#ff5f57"/>
+  <circle cx="106" cy="62" r="6" fill="#febc2e"/>
+  <circle cx="126" cy="62" r="6" fill="#28c840"/>
+  <text x="450" y="67" fill="#8b949e" text-anchor="middle" font-size="13">gitwiz — friendly git workflows</text>
+
+  <!-- Left Column: COMMANDS -->
+  <text x="100" y="115" fill="#7ee787" font-size="13" font-weight="700" letter-spacing="1">COMMANDS</text>
+  <line x1="100" y1="122" x2="194" y2="122" stroke="#238636" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Row 1: status -->
+  <g class="line a1">
+    <rect x="100" y="136" width="340" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="156" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="156" fill="#e6edf3" font-size="13">gitwiz status</text>
+    <text x="300" y="156" fill="#484f58" font-size="11">where am I?</text>
+  </g>
+
+  <!-- Row 2: init -->
+  <g class="line a2">
+    <rect x="100" y="174" width="340" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="194" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="194" fill="#e6edf3" font-size="13">gitwiz init</text>
+    <text x="300" y="194" fill="#484f58" font-size="11">one-time setup</text>
+  </g>
+
+  <!-- Row 3: branch -->
+  <g class="line a3">
+    <rect x="100" y="212" width="340" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="232" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="232" fill="#e6edf3" font-size="13">gitwiz branch</text>
+    <text x="300" y="232" fill="#484f58" font-size="11">start work</text>
+  </g>
+
+  <!-- Row 4: commit -->
+  <g class="line a4">
+    <rect x="100" y="250" width="340" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="270" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="270" fill="#e6edf3" font-size="13">gitwiz commit</text>
+    <text x="300" y="270" fill="#484f58" font-size="11">save progress</text>
+  </g>
+
+  <!-- Row 5: sync -->
+  <g class="line a5">
+    <rect x="100" y="288" width="340" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="308" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="308" fill="#e6edf3" font-size="13">gitwiz sync</text>
+    <text x="300" y="308" fill="#484f58" font-size="11">stay updated</text>
+  </g>
+
+  <!-- Row 6: undo -->
+  <g class="line a6">
+    <rect x="100" y="326" width="340" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="346" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="346" fill="#e6edf3" font-size="13">gitwiz undo</text>
+    <text x="300" y="346" fill="#484f58" font-size="11">fix mistakes</text>
+  </g>
+
+  <!-- Row 7: stash -->
+  <g class="line a7">
+    <rect x="100" y="364" width="340" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="384" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="384" fill="#e6edf3" font-size="13">gitwiz stash</text>
+    <text x="300" y="384" fill="#484f58" font-size="11">save for later</text>
+  </g>
+
+  <!-- Row 8: release start -->
+  <g class="line a8">
+    <rect x="100" y="402" width="340" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="422" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="422" fill="#e6edf3" font-size="13">gitwiz release start</text>
+    <text x="300" y="422" fill="#484f58" font-size="11">prepare ship</text>
+  </g>
+
+  <!-- Row 9: release finish -->
+  <g class="line a9">
+    <rect x="100" y="440" width="340" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="460" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="460" fill="#e6edf3" font-size="13">gitwiz release finish</text>
+    <text x="300" y="460" fill="#484f58" font-size="11">ship it!</text>
+  </g>
+
+  <!-- Cursor -->
+  <g class="line a9">
+    <text x="116" y="494" fill="#7ee787" font-size="13">$</text>
+    <rect x="132" y="483" width="8" height="14" fill="#7ee787" class="cur"/>
+  </g>
+
+  <!-- Right Column: WHY GITWIZ? -->
+  <text x="520" y="115" fill="#58a6ff" font-size="13" font-weight="700" letter-spacing="1">WHY GITWIZ?</text>
+  <line x1="520" y1="122" x2="632" y2="122" stroke="#58a6ff" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Feature 1 -->
+  <g class="line a1">
+    <text x="520" y="152" fill="#7ee787" font-size="14">✓</text>
+    <text x="544" y="152" fill="#e6edf3" font-size="13" font-weight="600">Zero prerequisites</text>
+    <text x="544" y="168" fill="#484f58" font-size="11">Plain git underneath</text>
+  </g>
+
+  <!-- Feature 2 -->
+  <g class="line a3">
+    <text x="520" y="200" fill="#7ee787" font-size="14">✓</text>
+    <text x="544" y="200" fill="#e6edf3" font-size="13" font-weight="600">Educational</text>
+    <text x="544" y="216" fill="#484f58" font-size="11">Learn git as you go</text>
+  </g>
+
+  <!-- Feature 3 -->
+  <g class="line a5">
+    <text x="520" y="248" fill="#7ee787" font-size="14">✓</text>
+    <text x="544" y="248" fill="#e6edf3" font-size="13" font-weight="600">Safe by default</text>
+    <text x="544" y="264" fill="#484f58" font-size="11">Destructive actions double-confirm</text>
+  </g>
+
+  <!-- Feature 4 -->
+  <g class="line a7">
+    <text x="520" y="296" fill="#7ee787" font-size="14">✓</text>
+    <text x="544" y="296" fill="#e6edf3" font-size="13" font-weight="600">Bilingual (EN/ES)</text>
+    <text x="544" y="312" fill="#484f58" font-size="11">Auto-detects your language</text>
+  </g>
+
+  <!-- Feature 5 -->
+  <g class="line a9">
+    <text x="520" y="344" fill="#7ee787" font-size="14">✓</text>
+    <text x="544" y="344" fill="#e6edf3" font-size="13" font-weight="600">Windows-first</text>
+    <text x="544" y="360" fill="#484f58" font-size="11">No shell issues anywhere</text>
+  </g>
+
+  <!-- Install box -->
+  <g class="line ar">
+    <rect x="520" y="390" width="290" height="76" rx="8" fill="#0d1117" stroke="#238636" stroke-width="1.5"/>
+    <text x="540" y="414" fill="#7ee787" font-size="12" font-weight="600">GET STARTED</text>
+    <text x="540" y="438" fill="#e6edf3" font-size="12">$ npm install -g @fsichi/gitwiz</text>
+    <text x="540" y="456" fill="#484f58" font-size="11">or run: npx @fsichi/gitwiz</text>
+  </g>
+
+  <!-- Footer link -->
+  <g class="line ar">
+    <text x="450" y="510" fill="#58a6ff" text-anchor="middle" font-size="12" font-weight="600">github.com/facusichi/gitwiz</text>
+  </g>
+</svg>
