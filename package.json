@@ -1,6 +1,6 @@
 {
   "name": "@fsichi/gitwiz",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Friendly git workflow CLI — interactive wizards for branching, commits, releases, sync, and undo",
   "keywords": [
     "git",
