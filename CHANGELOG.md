@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0](https://github.com/FSichi/gitwiz/compare/v1.0.0...v1.1.0) (2026-06-13)
+
+### Features
+
+* **cli:** modified cli menu ([b197591](https://github.com/FSichi/gitwiz/commit/b197591544aff32a5eb7b33d812ff7b1a0267505))
+* **commands:** added update command ([1f820e9](https://github.com/FSichi/gitwiz/commit/1f820e96fb331ef5bb23da4488771ccdd4083d21))
+
 ## [1.0.0](https://github.com/FSichi/gitwiz/compare/v0.6.1...v1.0.0) (2026-06-13)
 
 ### ⚠ Breaking Changes
