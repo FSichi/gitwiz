@@ -379,6 +379,16 @@ export const MESSAGES_ES: Record<string, string> = {
   'Untracked (new files):': 'Sin trackear (archivos nuevos):',
   'Working tree clean.': 'Todo limpio.',
   'Suggested next steps:': 'Próximos pasos sugeridos:',
+  'Suggested next steps': 'Próximos pasos sugeridos',
+  // hub (interactive next-step picker)
+  'Commit staged changes': 'Commitear los cambios staged',
+  'Commit your changes': 'Commitear tus cambios',
+  'Start a work branch': 'Crear una rama de trabajo',
+  'Sync with remote': 'Sincronizar con el remoto',
+  'Push your commits': 'Pushear tus commits',
+  'Finish the release': 'Terminar el release',
+  'Start something new': 'Empezar algo nuevo',
+  'Nothing, just looking': 'Nada, solo estoy mirando',
 
   // ---- stash -----------------------------------------------------------------
   'Nothing to stash and no stashes saved. All clean.':

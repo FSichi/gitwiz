@@ -4,11 +4,13 @@ import {
   captureGit,
   ensureGitRepo,
   getInProgressOperation,
+  runGit,
   tryCaptureGit,
   type GitOptions,
 } from '../core/git.js';
 import { t } from '../ui/i18n.js';
 import { divider, heading, log, section } from '../ui/output.js';
+import { select } from '../ui/prompts.js';
 
 export interface StatusInfo {
   branch: string | null; // null when detached
@@ -72,53 +74,130 @@ function findBaseBranch(branch: string, config: GitwizConfig): string | null {
   return null;
 }
 
+/** A gitwiz command (or git push) the user can launch straight from status. */
+type ActionKey = 'commit' | 'branch' | 'sync' | 'push' | 'release-finish';
+
+interface Suggestion {
+  /** Verbose, teaching explanation shown in the printed list. */
+  text: string;
+  /** Short label for the interactive picker; absent → informational only. */
+  label?: string;
+  /** Command launched when the user picks this suggestion. */
+  action?: ActionKey;
+}
+
 function buildSuggestions(
   info: StatusInfo,
   config: GitwizConfig,
   operation: 'merge' | 'rebase' | null,
   releaseBranch: string | null,
-): string[] {
-  const tips: string[] = [];
+): Suggestion[] {
+  const tips: Suggestion[] = [];
 
   if (operation) {
-    tips.push(
-      t('A {operation} is in progress — resolve conflicts and continue (git {operation} --continue), or abort it with {cmd}.', {
+    // Conflict resolution is hands-on — informational, no one-click action.
+    tips.push({
+      text: t('A {operation} is in progress — resolve conflicts and continue (git {operation} --continue), or abort it with {cmd}.', {
         operation,
         cmd: pc.bold('gitwiz undo'),
       }),
-    );
+    });
   }
   if (info.conflicted.length > 0) {
-    tips.push(t('Fix the conflicted files, then stage them with git add.'));
+    tips.push({ text: t('Fix the conflicted files, then stage them with git add.') });
   }
   if (info.staged.length > 0) {
-    tips.push(t('You have staged changes — run {cmd} to commit them.', { cmd: pc.bold('gitwiz commit') }));
+    tips.push({
+      text: t('You have staged changes — run {cmd} to commit them.', { cmd: pc.bold('gitwiz commit') }),
+      label: t('Commit staged changes'),
+      action: 'commit',
+    });
   } else if (info.unstaged.length > 0 || info.untracked.length > 0) {
     if (info.branch === config.mainBranch || info.branch === config.developBranch) {
-      tips.push(
-        t('You are editing directly on {branch} — run {cmd} to start a work branch first.', {
+      tips.push({
+        text: t('You are editing directly on {branch} — run {cmd} to start a work branch first.', {
           branch: pc.bold(info.branch),
           cmd: pc.bold('gitwiz branch'),
         }),
-      );
+        label: t('Start a work branch'),
+        action: 'branch',
+      });
     } else {
-      tips.push(t('Run {cmd} — it will help you pick files and write the message.', { cmd: pc.bold('gitwiz commit') }));
+      tips.push({
+        text: t('Run {cmd} — it will help you pick files and write the message.', { cmd: pc.bold('gitwiz commit') }),
+        label: t('Commit your changes'),
+        action: 'commit',
+      });
     }
   }
   if (info.behind > 0) {
-    tips.push(t('Your branch is behind its remote — run {cmd} to update.', { cmd: pc.bold('gitwiz sync') }));
+    tips.push({
+      text: t('Your branch is behind its remote — run {cmd} to update.', { cmd: pc.bold('gitwiz sync') }),
+      label: t('Sync with remote'),
+      action: 'sync',
+    });
   }
   if (info.ahead > 0 && info.behind === 0) {
-    tips.push(t('You have {n} unpushed commit(s) — run {cmd} to share them.', { n: info.ahead, cmd: pc.bold('git push') }));
+    tips.push({
+      text: t('You have {n} unpushed commit(s) — run {cmd} to share them.', { n: info.ahead, cmd: pc.bold('git push') }),
+      label: t('Push your commits'),
+      action: 'push',
+    });
   }
   if (releaseBranch) {
-    tips.push(t('Release branch {branch} is open — run {cmd} when it is ready.', { branch: pc.bold(releaseBranch), cmd: pc.bold('gitwiz release finish') }));
+    tips.push({
+      text: t('Release branch {branch} is open — run {cmd} when it is ready.', { branch: pc.bold(releaseBranch), cmd: pc.bold('gitwiz release finish') }),
+      label: t('Finish the release'),
+      action: 'release-finish',
+    });
   }
 
   if (tips.length === 0) {
-    tips.push(t('All clean and in sync. Start something new with {cmd}.', { cmd: pc.bold('gitwiz branch') }));
+    tips.push({
+      text: t('All clean and in sync. Start something new with {cmd}.', { cmd: pc.bold('gitwiz branch') }),
+      label: t('Start something new'),
+      action: 'branch',
+    });
   }
   return tips.slice(0, 3);
+}
+
+/** Launch the command behind a chosen suggestion. Lazy-imported to avoid cycles. */
+async function dispatch(action: ActionKey): Promise<void> {
+  switch (action) {
+    case 'commit':
+      return (await import('./commit.js')).commitCommand();
+    case 'branch':
+      return (await import('./branch.js')).branchCommand();
+    case 'sync':
+      return (await import('./sync.js')).syncCommand();
+    case 'release-finish':
+      return (await import('./release-finish.js')).releaseFinishCommand();
+    case 'push':
+      runGit(['push']);
+      return;
+  }
+}
+
+/**
+ * Turn the suggested next steps into an actionable picker. Status stops being a
+ * read-only report and becomes a hub: see where you are, then act on it.
+ */
+async function runStatusHub(suggestions: Suggestion[]): Promise<void> {
+  const actionable = suggestions.filter((s) => s.action && s.label);
+  if (actionable.length === 0) return;
+
+  const choice = await select<ActionKey | 'none'>({
+    message: t('What do you want to do?'),
+    choices: [
+      ...actionable.map((s) => ({ name: s.label!, value: s.action! })),
+      { name: pc.dim(t('Nothing, just looking')), value: 'none' as const },
+    ],
+  });
+  if (choice === 'none') return;
+
+  log.blank();
+  await dispatch(choice);
 }
 
 function printFileGroup(title: string, marker: string, color: (s: string) => string, files: string[]): void {
@@ -127,7 +206,7 @@ function printFileGroup(title: string, marker: string, color: (s: string) => str
   for (const file of files) log.info(`     ${color('·')} ${file}`);
 }
 
-export function statusCommand(opts: GitOptions = {}): void {
+export async function statusCommand(opts: GitOptions = {}): Promise<void> {
   ensureGitRepo(opts);
   const { config } = loadConfig(opts);
 
@@ -180,8 +259,13 @@ export function statusCommand(opts: GitOptions = {}): void {
   }
 
   log.blank();
-  section('Suggested next steps');
+  section(t('Suggested next steps'));
   const tips = buildSuggestions(info, config, operation, releaseBranch);
-  tips.forEach((tip, i) => log.info(`  ${pc.cyan(pc.bold(`${i + 1}.`))} ${tip}`));
+  tips.forEach((tip, i) => log.info(`  ${pc.cyan(pc.bold(`${i + 1}.`))} ${tip.text}`));
   log.blank();
+
+  // In a real terminal, let the user act on a suggestion right away.
+  if (process.stdin.isTTY && process.stdout.isTTY) {
+    await runStatusHub(tips);
+  }
 }

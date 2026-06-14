@@ -1,3 +1,4 @@
+import { intro as clackIntro, note as clackNote, outro as clackOutro } from '@clack/prompts';
 import pc from 'picocolors';
 
 let verbose = false;
@@ -52,31 +53,17 @@ export function section(title: string): void {
 }
 
 /**
- * Show a branded banner with the current version.
- * Called once when gitwiz starts (no subcommand).
+ * Open a branded session header with the current version.
+ * Called once when gitwiz starts the interactive menu (no subcommand).
+ * Starts clack's connected gutter, which the prompts that follow continue.
  */
 export function banner(version: string): void {
-  const lines = [
-    '',
-    `  ${pc.bold(pc.cyan('⚙'))}  ${pc.bold(pc.cyan('gitwiz'))} ${pc.dim(`v${version}`)}`,
-    `  ${pc.dim('Friendly git workflows')}`,
-    '',
-  ];
-  for (const line of lines) console.log(line);
+  clackIntro(`${pc.bold(pc.cyan('⚙ gitwiz'))} ${pc.dim(`v${version}`)}`);
 }
 
-/**
- * Progress indicator for multi-step flows.
- *   step(1, 4, 'Bumping version')
- *   →  ① ②③④  Bumping version
- */
-export function progressBar(current: number, total: number, label: string): void {
-  const filled = '●';
-  const empty = '○';
-  const dots = Array.from({ length: total }, (_, i) =>
-    i < current ? pc.cyan(filled) : pc.dim(empty),
-  ).join(' ');
-  console.log(`  ${dots}  ${pc.bold(label)}`);
+/** Close a clack gutter session with a final line. */
+export function outro(message = ''): void {
+  clackOutro(message);
 }
 
 // ── Spinner ──────────────────────────────────────────────────────────────────
@@ -147,30 +134,11 @@ export function echoGitCommand(args: string[]): void {
   console.log(pc.dim(`    $ git ${formatArgs(args)}`));
 }
 
-/** Strip ANSI escape codes from a string for accurate length measurement. */
-function stripAnsi(str: string): string {
-  // eslint-disable-next-line no-control-regex
-  return str.replace(/\x1B\[[0-9;]*m/g, '');
-}
-
 /**
- * Draw a box around lines of text.
+ * Draw a box around lines of text — delegates to clack's `note`, which measures
+ * ANSI-aware widths and renders inside the connected gutter.
  * Optional `title` renders a label in the top border.
  */
 export function box(lines: string[], title?: string): void {
-  const width = Math.max(...lines.map((l) => stripAnsi(l).length), title?.length ?? 0);
-
-  if (title) {
-    const titleStr = ` ${title} `;
-    const rightPad = width + 2 - titleStr.length;
-    console.log(`  ┌${pc.dim(titleStr)}${'─'.repeat(rightPad)}┐`);
-  } else {
-    console.log(pc.dim(`  ┌${'─'.repeat(width + 2)}┐`));
-  }
-
-  for (const line of lines) {
-    const visibleLen = stripAnsi(line).length;
-    console.log(`  ${pc.dim('│')} ${line.padEnd(width + 2 - visibleLen)} ${pc.dim('│')}`);
-  }
-  console.log(pc.dim(`  └${'─'.repeat(width + 2)}┘`));
+  clackNote(lines.join('\n'), title);
 }

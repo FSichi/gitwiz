@@ -1,3 +1,4 @@
+import { Listr, type ListrTask } from 'listr2';
 import pc from 'picocolors';
 import { loadConfig, type GitwizConfig } from '../core/config.js';
 import {
@@ -15,7 +16,7 @@ import {
 } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
-import { log, progressBar, spinSync } from '../ui/output.js';
+import { log, spinSync } from '../ui/output.js';
 import { assertInteractive, confirm, select } from '../ui/prompts.js';
 
 function mergeConflictError(target: string): GitwizError {
@@ -30,15 +31,113 @@ function mergeConflictError(target: string): GitwizError {
   );
 }
 
+// ── Step model ───────────────────────────────────────────────────────────────
+// The release sequence lives in ONE place. How each git mutation is executed is
+// abstracted behind ReleaseGit, so the same steps drive both worlds:
+//   • headless  → inheritRunner: streams git output (current behaviour, tests rely on it)
+//   • interactive → capturedRunner: captures output so listr2's live spinner stays intact
+
+interface ReleaseGit {
+  /** Run a mutating git command; throw on failure. */
+  run(args: string[]): void;
+  /** Run a mutating git command; return success instead of throwing. */
+  tryRun(args: string[]): boolean;
+}
+
+interface StepDef {
+  title: string;
+  run: (g: ReleaseGit) => void;
+}
+
+function inheritRunner(opts: GitOptions): ReleaseGit {
+  return {
+    run: (args) => runGit(args, opts),
+    tryRun: (args) => tryRunGit(args, opts),
+  };
+}
+
+/** Captured runner — no inherited stdout, so it never corrupts a live renderer. */
+function capturedRunner(opts: GitOptions, echo: (cmd: string) => void): ReleaseGit {
+  return {
+    run: (args) => {
+      echo(`$ git ${args.join(' ')}`);
+      captureGit(args, opts);
+    },
+    tryRun: (args) => {
+      echo(`$ git ${args.join(' ')}`);
+      return tryCaptureGit(args, opts) !== null;
+    },
+  };
+}
+
+/** The ordered release steps. Each title doubles as a progress label. */
+function releaseFinishStepDefs(config: GitwizConfig, version: string, opts: GitOptions): StepDef[] {
+  const branch = `release/${version}`;
+  const tag = `${config.tagPrefix}${version}`;
+  const remote = hasRemote(opts);
+  const alsoMain = config.release.alsoMergeToMain && config.mainBranch !== config.developBranch;
+
+  const steps: StepDef[] = [
+    {
+      title: t('Merge {branch} into {target}', { branch, target: config.developBranch }),
+      run: (g) => {
+        g.run(['switch', config.developBranch]);
+        if (remote && remoteBranchExists(config.developBranch, opts)) {
+          g.run(['pull', '--ff-only', 'origin', config.developBranch]);
+        }
+        if (!g.tryRun(['merge', '--no-ff', '--no-edit', branch])) {
+          throw mergeConflictError(config.developBranch);
+        }
+      },
+    },
+    {
+      title: t('Create tag {tag}', { tag }),
+      run: (g) => g.run(['tag', '-a', tag, '-m', `Release ${version}`]),
+    },
+  ];
+
+  if (remote) {
+    steps.push({
+      title: t('Push to origin'),
+      run: (g) => g.run(['push', 'origin', config.developBranch, tag]),
+    });
+  }
+
+  if (alsoMain) {
+    steps.push({
+      title: t('Also merge into {branch}', { branch: config.mainBranch }),
+      run: (g) => {
+        g.run(['switch', config.mainBranch]);
+        if (remote && remoteBranchExists(config.mainBranch, opts)) {
+          g.run(['pull', '--ff-only', 'origin', config.mainBranch]);
+        }
+        if (!g.tryRun(['merge', '--no-ff', '--no-edit', branch])) {
+          throw mergeConflictError(config.mainBranch);
+        }
+        if (remote) g.run(['push', 'origin', config.mainBranch]);
+        g.run(['switch', config.developBranch]);
+      },
+    });
+  }
+
+  steps.push({
+    title: t('Delete release branch'),
+    run: (g) => {
+      g.run(['branch', '-d', branch]);
+      if (remote) g.tryRun(['push', 'origin', '--delete', branch]);
+    },
+  });
+
+  return steps;
+}
+
 /** Non-interactive release finish — merges, tags, pushes, deletes the release branch. */
 export function performReleaseFinish(
   config: GitwizConfig,
   version: string,
   opts: GitOptions = {},
 ): { tag: string } {
-  const branch = `release/${version}`;
   const tag = `${config.tagPrefix}${version}`;
-  const remote = hasRemote(opts);
 
   // Pre-flight: never merge first and fail at the tag.
   if (tagExists(tag, opts)) {
@@ -47,37 +146,8 @@ export function performReleaseFinish(
     });
   }
 
-  runGit(['switch', config.developBranch], opts);
-  if (remote && remoteBranchExists(config.developBranch, opts)) {
-    spinSync(t('Pulling latest {branch}...', { branch: config.developBranch }), () =>
-      runGit(['pull', '--ff-only', 'origin', config.developBranch], opts),
-    );
-  }
-  if (!tryRunGit(['merge', '--no-ff', '--no-edit', branch], opts)) {
-    throw mergeConflictError(config.developBranch);
-  }
-
-  runGit(['tag', '-a', tag, '-m', `Release ${version}`], opts);
-  if (remote) {
-    runGit(['push', 'origin', config.developBranch, tag], opts);
-  }
-
-  if (config.release.alsoMergeToMain && config.mainBranch !== config.developBranch) {
-    runGit(['switch', config.mainBranch], opts);
-    if (remote && remoteBranchExists(config.mainBranch, opts)) {
-      runGit(['pull', '--ff-only', 'origin', config.mainBranch], opts);
-    }
-    if (!tryRunGit(['merge', '--no-ff', '--no-edit', branch], opts)) {
-      throw mergeConflictError(config.mainBranch);
-    }
-    if (remote) runGit(['push', 'origin', config.mainBranch], opts);
-    runGit(['switch', config.developBranch], opts);
-  }
-
-  runGit(['branch', '-d', branch], opts);
-  if (remote) {
-    tryRunGit(['push', 'origin', '--delete', branch], opts);
-  }
+  const g = inheritRunner(opts);
+  for (const step of releaseFinishStepDefs(config, version, opts)) step.run(g);
   return { tag };
 }
 
@@ -172,26 +242,35 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
   }
 
   log.blank();
-  const steps = config.release.alsoMergeToMain && config.mainBranch !== config.developBranch ? 5 : hasRemote() ? 5 : 4;
-  progressBar(0, steps, t('Merge {branch} into {target}', { branch, target: config.developBranch }));
-  progressBar(1, steps, t('Create tag {tag}', { tag }));
-  if (hasRemote()) progressBar(2, steps, t('Push to origin'));
-  if (config.release.alsoMergeToMain && config.mainBranch !== config.developBranch) {
-    progressBar(3, steps, t('Also merge into {branch}', { branch: config.mainBranch }));
-  }
-  progressBar(steps - 1, steps, t('Delete release branch'));
-  log.blank();
 
-  if (!auto) {
+  if (auto) {
+    performReleaseFinish(config, version);
+  } else {
     assertInteractive();
     const go = await confirm({ message: t('Finish release {version}?', { version }), default: true });
     if (!go) {
       log.dim(t('Cancelled.'));
       return;
     }
-  }
 
-  performReleaseFinish(config, version);
+    // Live, in-place progress — listr2 owns the screen, so steps run captured.
+    const taskList: ListrTask[] = releaseFinishStepDefs(config, version, {}).map((step) => ({
+      title: step.title,
+      task: async (_ctx, task) => {
+        step.run(capturedRunner({}, (cmd) => { task.output = pc.dim(cmd); }));
+      },
+    }));
+
+    try {
+      await new Listr(taskList, { concurrent: false, exitOnError: true }).run();
+    } catch (err) {
+      // Surface the underlying GitwizError so cli.ts prints its hint.
+      if (err instanceof GitwizError) throw err;
+      const inner = (err as { errors?: unknown[] }).errors?.find((e) => e instanceof GitwizError);
+      if (inner) throw inner;
+      throw err;
+    }
+  }
 
   log.blank();
   log.success(t('Release {tag} is done! 🎉', { tag: pc.bold(tag) }));

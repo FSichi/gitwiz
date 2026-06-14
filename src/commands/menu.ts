@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import pc from 'picocolors';
 import { t } from '../ui/i18n.js';
-import { banner, divider, log } from '../ui/output.js';
+import { banner, log, outro } from '../ui/output.js';
 import { select } from '../ui/prompts.js';
 import { branchCommand } from './branch.js';
 import { commitCommand } from './commit.js';
@@ -34,7 +34,6 @@ type MenuAction =
 /** Interactive launcher shown when `gitwiz` is run with no command (and a TTY). */
 export async function menuCommand(): Promise<void> {
   banner(version);
-  divider();
 
   const action = await select<MenuAction>({
     message: t('What do you want to do?'),
@@ -58,7 +57,7 @@ export async function menuCommand(): Promise<void> {
 
   switch (action) {
     case 'status':
-      statusCommand();
+      await statusCommand();
       return;
     case 'commit':
       await commitCommand();
@@ -88,7 +87,7 @@ export async function menuCommand(): Promise<void> {
       await updateCommand();
       return;
     case 'exit':
-      log.dim(t('Bye!'));
+      outro(t('Bye!'));
       return;
   }
 }
