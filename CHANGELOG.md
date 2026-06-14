@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0](https://github.com/FSichi/gitwiz/compare/v0.5.1...v0.6.0) (2026-06-13)
+
+### Features
+
+* **package:** added auto update check ([014814b](https://github.com/FSichi/gitwiz/commit/014814bab1cbaeb3a5e67a9b2bd4c998dcae7382))
+
 ## [0.5.1](https://github.com/FSichi/gitwiz/compare/v0.5.0...v0.5.1) (2026-06-13)
 
 _No notable changes._
