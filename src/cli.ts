@@ -11,6 +11,7 @@ import { stashCommand } from './commands/stash.js';
 import { statusCommand } from './commands/status.js';
 import { syncCommand } from './commands/sync.js';
 import { undoCommand } from './commands/undo.js';
+import { updateCommand } from './commands/update.js';
 import { checkForUpdates } from './core/update-checker.js';
 import { GitwizError } from './ui/errors.js';
 import { t } from './ui/i18n.js';
@@ -77,6 +78,18 @@ program
   .command('stash')
   .description(t('Set changes aside for later and bring them back safely'))
   .action(stashCommand);
+
+program
+  .command('update')
+  .description(t('Update gitwiz to the latest version'))
+  .option('--npm', t('use npm as package manager'))
+  .option('--yarn', t('use yarn as package manager'))
+  .option('--pnpm', t('use pnpm as package manager'))
+  .option('--bun', t('use bun as package manager'))
+  .action(async (opts) => {
+    const pm = opts.npm ? 'npm' : opts.yarn ? 'yarn' : opts.pnpm ? 'pnpm' : opts.bun ? 'bun' : undefined;
+    await updateCommand({ packageManager: pm });
+  });
 
 const release = program
   .command('release')
