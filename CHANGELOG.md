@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0](https://github.com/FSichi/gitwiz/compare/v1.1.1...v1.2.0) (2026-06-14)
+
+### Features
+
+* **package:** added new TUI on package ([78c6509](https://github.com/FSichi/gitwiz/commit/78c6509b51ae0b04790e7563b179ed007c831581))
+
 ## [1.1.1](https://github.com/FSichi/gitwiz/compare/v1.1.0...v1.1.1) (2026-06-14)
 
 ### Bug Fixes
