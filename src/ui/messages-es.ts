@@ -419,6 +419,7 @@ export const MESSAGES_ES: Record<string, string> = {
   '— bump version + changelog': '— subir versión + changelog',
   '— merge, tag, publish': '— merge, tag, publicar',
   '— set up gitwiz here': '— configurar gitwiz acá',
+  '— update to latest version': '— actualizar a la última versión',
   'exit': 'salir',
   'Bye!': '¡Chau!',
 
@@ -455,4 +456,18 @@ export const MESSAGES_ES: Record<string, string> = {
   'Release tags:': 'Tags de release:',
   'Next: run "gitwiz branch" to start working, or "gitwiz status" anytime you feel lost.':
     'Siguiente: corré "gitwiz branch" para empezar a trabajar, o "gitwiz status" cuando te sientas perdido.',
+
+  // ---- update ----------------------------------------------------------------
+  'Update gitwiz to the latest version': 'Actualizar gitwiz a la última versión',
+  'use npm as package manager': 'usar npm como package manager',
+  'use yarn as package manager': 'usar yarn como package manager',
+  'use pnpm as package manager': 'usar pnpm como package manager',
+  'use bun as package manager': 'usar bun como package manager',
+  'Detected package manager: {pm}': 'Package manager detectado: {pm}',
+  'Checking for updates...': 'Buscando actualizaciones...',
+  'Updating @fsichi/gitwiz via {pm}...': 'Actualizando @fsichi/gitwiz con {pm}...',
+  '@fsichi/gitwiz updated successfully! 🎉': '¡@fsichi/gitwiz se actualizó correctamente! 🎉',
+  'Run "gitwiz --version" to verify.': 'Corré "gitwiz --version" para verificar.',
+  'Update failed.': 'La actualización falló.',
+  'Try running the command manually: {cmd}': 'Intentá correr el comando manualmente: {cmd}',
 };

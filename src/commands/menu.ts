@@ -11,6 +11,7 @@ import { stashCommand } from './stash.js';
 import { statusCommand } from './status.js';
 import { syncCommand } from './sync.js';
 import { undoCommand } from './undo.js';
+import { updateCommand } from './update.js';
 
 type MenuAction =
   | 'status'
@@ -22,6 +23,7 @@ type MenuAction =
   | 'release-start'
   | 'release-finish'
   | 'init'
+  | 'update'
   | 'exit';
 
 /** Interactive launcher shown when `gitwiz` is run with no command (and a TTY). */
@@ -39,6 +41,7 @@ export async function menuCommand(): Promise<void> {
       { name: `release start    ${pc.dim(t('— bump version + changelog'))}`, value: 'release-start' },
       { name: `release finish   ${pc.dim(t('— merge, tag, publish'))}`, value: 'release-finish' },
       { name: `init             ${pc.dim(t('— set up gitwiz here'))}`, value: 'init' },
+      { name: `update           ${pc.dim(t('— update to latest version'))}`, value: 'update' },
       { name: pc.dim(t('exit')), value: 'exit' },
     ],
     pageSize: 11,
@@ -71,6 +74,9 @@ export async function menuCommand(): Promise<void> {
       return;
     case 'init':
       await initCommand();
+      return;
+    case 'update':
+      await updateCommand();
       return;
     case 'exit':
       log.dim(t('Bye!'));
