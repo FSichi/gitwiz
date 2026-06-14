@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1](https://github.com/FSichi/gitwiz/compare/v1.1.0...v1.1.1) (2026-06-14)
+
+### Bug Fixes
+
+* **commands:** commit command fixed on stashed files ([fe7ba4f](https://github.com/FSichi/gitwiz/commit/fe7ba4f5866f33b59eb30fbdcc2aba99d220e11f))
+
 ## [1.1.0](https://github.com/FSichi/gitwiz/compare/v1.0.0...v1.1.0) (2026-06-13)
 
 ### Features
