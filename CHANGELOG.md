@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0](https://github.com/FSichi/gitwiz/compare/v1.2.0...v1.3.0) (2026-06-14)
+
+### Features
+
+* **package:** performed commands ([19587f0](https://github.com/FSichi/gitwiz/commit/19587f02542dc56c67ae2e226ee77b73afc1bd94))
+
 ## [1.2.0](https://github.com/FSichi/gitwiz/compare/v1.1.1...v1.2.0) (2026-06-14)
 
 ### Features
