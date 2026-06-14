@@ -11,13 +11,16 @@ import { stashCommand } from './commands/stash.js';
 import { statusCommand } from './commands/status.js';
 import { syncCommand } from './commands/sync.js';
 import { undoCommand } from './commands/undo.js';
+import { checkForUpdates } from './core/update-checker.js';
 import { GitwizError } from './ui/errors.js';
 import { t } from './ui/i18n.js';
 import { log, setVerbose } from './ui/output.js';
 
 const pkg = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
-) as { version: string };
+) as { name: string; version: string };
+
+checkForUpdates(pkg);
 
 const program = new Command();
 
