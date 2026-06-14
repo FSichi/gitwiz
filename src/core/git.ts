@@ -88,6 +88,17 @@ export function captureGit(args: string[], opts: GitOptions = {}): string {
   return (result.stdout ?? '').trim();
 }
 
+/** Like captureGit but preserves leading/trailing whitespace (needed for --porcelain output). */
+export function captureGitRaw(args: string[], opts: GitOptions = {}): string {
+  if (isVerbose()) echoGitCommand(args);
+  const result = spawnGit(args, opts, 'pipe');
+  if (result.status !== 0) {
+    const stderr = (result.stderr ?? '').trim();
+    throw new GitwizError(`git ${args.join(' ')} failed${stderr ? `: ${stderr}` : '.'}`);
+  }
+  return (result.stdout ?? '').trimEnd();
+}
+
 /** Like captureGit but returns null on failure. */
 export function tryCaptureGit(args: string[], opts: GitOptions = {}): string | null {
   if (isVerbose()) echoGitCommand(args);

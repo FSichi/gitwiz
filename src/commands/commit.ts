@@ -1,7 +1,7 @@
 import pc from 'picocolors';
 import { loadConfig } from '../core/config.js';
 import { buildCommitHeader, buildCommitMessage, normalizeScope } from '../core/commit-message.js';
-import { captureGit, ensureGitRepo, getCurrentBranch, runGit } from '../core/git.js';
+import { captureGitRaw, captureGit, ensureGitRepo, getCurrentBranch, runGit } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
 import { box, log } from '../ui/output.js';
@@ -23,7 +23,9 @@ function getStagedFiles(): string[] {
 
 /** Changed (tracked) + untracked files that could be staged. */
 function getStageableFiles(): string[] {
-  const lines = captureGit(['status', '--porcelain']).split('\n').filter(Boolean);
+  // Use captureGitRaw — porcelain output starts with a space for working-tree
+  // changes, and .trim() would strip that leading space, breaking detection.
+  const lines = captureGitRaw(['status', '--porcelain']).split('\n').filter(Boolean);
   const files: string[] = [];
   for (const line of lines) {
     const xy = line.slice(0, 2);

@@ -35,12 +35,13 @@ Run `gitwiz` on its own (in a terminal) to open an interactive menu listing ever
 | `gitwiz status` | Where am I and what should I do next? Human-friendly status with suggested next steps. |
 | `gitwiz init` | One-time setup: pick your production/work branches and tag prefix. |
 | `gitwiz branch` | Start a feature/bugfix/hotfix/refactor branch the right way (updates the base first). |
-| `gitwiz commit` | Guided [conventional commit](https://www.conventionalcommits.org): pick files, type, scope, description. |
+| `gitwiz commit` | Guided [conventional commit](https://www.conventionalcommits.org): stage files (all at once or pick individually), type, scope, description. |
 | `gitwiz sync` | Safely bring the latest changes into your branch (guided merge/rebase, auto-stash). |
 | `gitwiz undo` | Undo things without fear: last commit, staged files, local changes — each option explained. |
 | `gitwiz stash` | Set changes aside for later with a description, and restore/inspect/delete them safely. |
 | `gitwiz release start` | Bump the version (with a suggested bump), generate/update `CHANGELOG.md`, open a release branch. |
 | `gitwiz release finish` | Merge the release, create the tag, push, clean up. |
+| `gitwiz update` | Update gitwiz to the latest version (auto-detects npm/yarn/pnpm/bun). |
 
 ### `gitwiz status`
 
@@ -52,7 +53,7 @@ Asks what kind of work you're starting (feature, bugfix, hotfix, refactor, chore
 
 ### `gitwiz commit`
 
-If nothing is staged it lets you pick files. Then walks you through type → scope → description → breaking change, previews the message, and commits. Messages follow [Conventional Commits](https://www.conventionalcommits.org), which is what powers the automatic changelog.
+If nothing is staged it detects your uncommitted changes and lets you choose: **stage everything** and commit, or **pick specific files** from a checkbox list. Then walks you through type → scope → description → breaking change, previews the message, and commits. Messages follow [Conventional Commits](https://www.conventionalcommits.org), which is what powers the automatic changelog.
 
 ### `gitwiz sync`
 
@@ -65,6 +66,10 @@ A menu of safe undos, each showing the exact git command it will run. Destructiv
 ### `gitwiz stash`
 
 A friendly face for `git stash`: save your current changes with a description ("so future-you recognizes them"), then restore, inspect, or delete saved stashes from a menu. Restoring offers both flavors — bring it back and remove it from the list (`pop`), or keep a copy (`apply`).
+
+### `gitwiz update`
+
+Checks for the latest version of gitwiz and updates it. Auto-detects your package manager (npm, yarn, pnpm, bun) or force one with `--npm`, `--yarn`, `--pnpm`, or `--bun`. gitwiz also checks for updates in the background when you run any command — if a new version is available, you'll see a notification at the end of the output.
 
 ### `gitwiz release`
 
@@ -95,6 +100,7 @@ Work branches are created from `develop` (except `hotfix/`, which branches from 
 | Not sure what's going on / what to do next | `gitwiz status` |
 | Made a mistake (bad commit, wrong files, dirty tree) | `gitwiz undo` |
 | Time to ship what's on `develop` | `gitwiz release start` → review → `gitwiz release finish` |
+| Updating gitwiz itself | `gitwiz update` |
 
 ### Step by step
 
@@ -317,6 +323,7 @@ Committing to a **protected branch** (`main`/`develop` by default) fails fast in
 - **Windows-first class** — no shell interpolation anywhere; arguments go to git verbatim. Tested on Windows, macOS and Linux.
 - **Bilingual** — wizards in English or Spanish, following your system locale.
 - **Tiny** — 4 runtime dependencies, fast `npx` startup.
+- **Always up to date** — checks for new versions in the background and notifies you; update with `gitwiz update`.
 
 ## License
 
