@@ -15,7 +15,7 @@ import {
 } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
-import { log } from '../ui/output.js';
+import { log, progressBar, spinSync } from '../ui/output.js';
 import { assertInteractive, confirm, select } from '../ui/prompts.js';
 
 function mergeConflictError(target: string): GitwizError {
@@ -49,7 +49,9 @@ export function performReleaseFinish(
 
   runGit(['switch', config.developBranch], opts);
   if (remote && remoteBranchExists(config.developBranch, opts)) {
-    runGit(['pull', '--ff-only', 'origin', config.developBranch], opts);
+    spinSync(t('Pulling latest {branch}...', { branch: config.developBranch }), () =>
+      runGit(['pull', '--ff-only', 'origin', config.developBranch], opts),
+    );
   }
   if (!tryRunGit(['merge', '--no-ff', '--no-edit', branch], opts)) {
     throw mergeConflictError(config.developBranch);
@@ -113,7 +115,7 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
           return;
         }
       }
-      runGit(['fetch', 'origin']);
+      spinSync(t('Fetching from origin...'), () => runGit(['fetch', 'origin']));
       runGit(['switch', remoteReleases[0]!]);
       releases = [remoteReleases[0]!];
     }
@@ -170,14 +172,14 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
   }
 
   log.blank();
-  log.info(pc.bold(t('This will:')));
-  log.info(`  ${t('1. Merge {branch} into {target} (--no-ff)', { branch: pc.cyan(branch), target: pc.cyan(config.developBranch) })}`);
-  log.info(`  ${t('2. Create tag {tag}', { tag: pc.cyan(tag) })}`);
-  if (hasRemote()) log.info(`  ${t('3. Push {branch} and the tag to origin', { branch: config.developBranch })}`);
+  const steps = config.release.alsoMergeToMain && config.mainBranch !== config.developBranch ? 5 : hasRemote() ? 5 : 4;
+  progressBar(0, steps, t('Merge {branch} into {target}', { branch, target: config.developBranch }));
+  progressBar(1, steps, t('Create tag {tag}', { tag }));
+  if (hasRemote()) progressBar(2, steps, t('Push to origin'));
   if (config.release.alsoMergeToMain && config.mainBranch !== config.developBranch) {
-    log.info(`  ${t('4. Also merge into {branch} and push it', { branch: pc.cyan(config.mainBranch) })}`);
+    progressBar(3, steps, t('Also merge into {branch}', { branch: config.mainBranch }));
   }
-  log.info(`  ${hasRemote() ? '5' : '4'}. ${t('Delete the {branch} branch', { branch })}`);
+  progressBar(steps - 1, steps, t('Delete release branch'));
   log.blank();
 
   if (!auto) {

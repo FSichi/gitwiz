@@ -14,7 +14,7 @@ import {
 } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
-import { log } from '../ui/output.js';
+import { log, spinSync } from '../ui/output.js';
 import { assertInteractive, confirm, select } from '../ui/prompts.js';
 
 const STASH_MESSAGE = 'gitwiz sync autostash';
@@ -56,7 +56,7 @@ export async function syncCommand(): Promise<void> {
 
   const remote = hasRemote();
   if (remote) {
-    runGit(['fetch', 'origin']);
+    spinSync(t('Fetching from origin...'), () => runGit(['fetch', 'origin']));
   }
 
   const base = findBaseBranch(current, config);

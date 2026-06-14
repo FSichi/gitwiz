@@ -8,7 +8,7 @@ import {
   type GitOptions,
 } from '../core/git.js';
 import { t } from '../ui/i18n.js';
-import { heading, log } from '../ui/output.js';
+import { divider, heading, log, section } from '../ui/output.js';
 
 export interface StatusInfo {
   branch: string | null; // null when detached
@@ -123,9 +123,8 @@ function buildSuggestions(
 
 function printFileGroup(title: string, marker: string, color: (s: string) => string, files: string[]): void {
   if (files.length === 0) return;
-  log.info(pc.bold(title));
-  for (const file of files) log.info(`  ${color(marker)} ${file}`);
-  log.blank();
+  log.info(`  ${color(pc.bold(`${marker} ${files.length} ${title}`))}`);
+  for (const file of files) log.info(`     ${color('·')} ${file}`);
 }
 
 export function statusCommand(opts: GitOptions = {}): void {
@@ -147,38 +146,42 @@ export function statusCommand(opts: GitOptions = {}): void {
   } else {
     const base = findBaseBranch(info.branch, config);
     heading(
-      `${t('On branch {branch}', { branch: info.branch })}${base ? pc.dim(` ${t('(based on {base})', { base })}`) : ''}`,
+      `${t('On branch {branch}', { branch: pc.bold(info.branch) })}${base ? pc.dim(` ${t('(based on {base})', { base })}`) : ''}`,
     );
     if (info.upstream) {
       const parts: string[] = [];
       if (info.ahead > 0) parts.push(pc.green(t('↑ {n} ahead', { n: info.ahead })));
       if (info.behind > 0) parts.push(pc.yellow(t('↓ {n} behind', { n: info.behind })));
-      if (parts.length === 0) parts.push(pc.green(t('in sync')));
-      log.info(`  ${parts.join(' · ')} ${pc.dim(t('of {upstream}', { upstream: info.upstream }))}`);
+      if (parts.length === 0) parts.push(pc.green(t('✓ in sync')));
+      log.info(`  ${parts.join(pc.dim(' · '))}  ${pc.dim(info.upstream)}`);
     } else {
       log.dim(`  ${t('Not pushed to any remote yet.')}`);
     }
   }
+
   if (operation) {
+    log.blank();
     log.warn(t('A {operation} is in progress.', { operation }));
   }
-  log.blank();
 
-  printFileGroup(t('Conflicted (fix these first):'), '✖', pc.red, info.conflicted);
-  printFileGroup(t('Staged (ready to commit):'), '+', pc.green, info.staged);
-  printFileGroup(t('Modified (not staged):'), '~', pc.yellow, info.unstaged);
-  printFileGroup(t('Untracked (new files):'), '?', pc.dim, info.untracked);
+  const totalFiles = info.staged.length + info.unstaged.length + info.untracked.length + info.conflicted.length;
 
-  if (
-    info.staged.length + info.unstaged.length + info.untracked.length + info.conflicted.length ===
-    0
-  ) {
-    log.success(t('Working tree clean.'));
+  if (totalFiles > 0) {
     log.blank();
+    divider();
+    printFileGroup(t('Conflicted (fix these first):'), '✖', pc.red, info.conflicted);
+    printFileGroup(t('Staged (ready to commit):'), '✔', pc.green, info.staged);
+    printFileGroup(t('Modified (not staged):'), '~', pc.yellow, info.unstaged);
+    printFileGroup(t('Untracked (new files):'), '?', pc.dim, info.untracked);
+    divider();
+  } else {
+    log.blank();
+    log.success(t('Working tree clean.'));
   }
 
-  log.info(pc.bold(t('Suggested next steps:')));
+  log.blank();
+  section('Suggested next steps');
   const tips = buildSuggestions(info, config, operation, releaseBranch);
-  tips.forEach((tip, i) => log.info(`  ${pc.cyan(`${i + 1}.`)} ${tip}`));
+  tips.forEach((tip, i) => log.info(`  ${pc.cyan(pc.bold(`${i + 1}.`))} ${tip}`));
   log.blank();
 }

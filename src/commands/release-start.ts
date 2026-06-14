@@ -21,7 +21,7 @@ import {
 import { applyVersion, bumpPreviews, readPackageVersion, suggestBump, type BumpKind } from '../core/version.js';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
-import { log } from '../ui/output.js';
+import { log, spinSync } from '../ui/output.js';
 import { assertInteractive, input, select } from '../ui/prompts.js';
 
 function listLocalReleaseBranches(opts: GitOptions = {}): string[] {
@@ -96,7 +96,9 @@ export function performReleaseStart(
 
   runGit(['switch', config.developBranch], opts);
   if (remote && remoteBranchExists(config.developBranch, opts)) {
-    runGit(['pull', '--ff-only', 'origin', config.developBranch], opts);
+    spinSync(t('Pulling latest {branch}...', { branch: config.developBranch }), () =>
+      runGit(['pull', '--ff-only', 'origin', config.developBranch], opts),
+    );
   }
   runGit(['switch', '-c', branch], opts);
 

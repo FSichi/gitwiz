@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import pc from 'picocolors';
 import { t } from '../ui/i18n.js';
-import { log } from '../ui/output.js';
+import { banner, divider, log } from '../ui/output.js';
 import { select } from '../ui/prompts.js';
 import { branchCommand } from './branch.js';
 import { commitCommand } from './commit.js';
@@ -12,6 +13,10 @@ import { statusCommand } from './status.js';
 import { syncCommand } from './sync.js';
 import { undoCommand } from './undo.js';
 import { updateCommand } from './update.js';
+
+const { version } = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+) as { version: string };
 
 type MenuAction =
   | 'status'
@@ -28,24 +33,28 @@ type MenuAction =
 
 /** Interactive launcher shown when `gitwiz` is run with no command (and a TTY). */
 export async function menuCommand(): Promise<void> {
-  log.blank();
+  banner(version);
+  divider();
+
   const action = await select<MenuAction>({
     message: t('What do you want to do?'),
     choices: [
-      { name: `status           ${pc.dim(t('— where am I and what to do next'))}`, value: 'status' },
-      { name: `commit           ${pc.dim(t('— create a guided commit'))}`, value: 'commit' },
-      { name: `branch           ${pc.dim(t('— start a new work branch'))}`, value: 'branch' },
-      { name: `sync             ${pc.dim(t('— update my branch safely'))}`, value: 'sync' },
-      { name: `undo             ${pc.dim(t('— undo something safely'))}`, value: 'undo' },
-      { name: `stash            ${pc.dim(t('— set changes aside for later'))}`, value: 'stash' },
-      { name: `release start    ${pc.dim(t('— bump version + changelog'))}`, value: 'release-start' },
-      { name: `release finish   ${pc.dim(t('— merge, tag, publish'))}`, value: 'release-finish' },
-      { name: `init             ${pc.dim(t('— set up gitwiz here'))}`, value: 'init' },
-      { name: `update           ${pc.dim(t('— update to latest version'))}`, value: 'update' },
+      { name: `${pc.bold('status')}           ${pc.dim('— where am I and what to do next')}`, value: 'status' },
+      { name: `${pc.bold('commit')}           ${pc.dim('— create a guided commit')}`, value: 'commit' },
+      { name: `${pc.bold('branch')}           ${pc.dim('— start a new work branch')}`, value: 'branch' },
+      { name: `${pc.bold('sync')}             ${pc.dim('— update my branch safely')}`, value: 'sync' },
+      { name: `${pc.bold('undo')}             ${pc.dim('— undo something safely')}`, value: 'undo' },
+      { name: `${pc.bold('stash')}            ${pc.dim('— set changes aside for later')}`, value: 'stash' },
+      { name: `${pc.bold('release start')}    ${pc.dim('— bump version + changelog')}`, value: 'release-start' },
+      { name: `${pc.bold('release finish')}   ${pc.dim('— merge, tag, publish')}`, value: 'release-finish' },
+      { name: `${pc.bold('init')}             ${pc.dim('— set up gitwiz here')}`, value: 'init' },
+      { name: `${pc.bold('update')}           ${pc.dim('— update to latest version')}`, value: 'update' },
       { name: pc.dim(t('exit')), value: 'exit' },
     ],
-    pageSize: 11,
+    pageSize: 12,
   });
+
+  log.blank();
 
   switch (action) {
     case 'status':
