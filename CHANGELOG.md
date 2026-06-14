@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0](https://github.com/FSichi/gitwiz/compare/v0.6.1...v1.0.0) (2026-06-13)
+
+### ⚠ Breaking Changes
+
+* **commands:** this changes the way it consumes de commit flow ([1ac101c](https://github.com/FSichi/gitwiz/commit/1ac101cf0fc13c6c7af18a13a546e8f364d20151))
+
 ## [0.6.1](https://github.com/FSichi/gitwiz/compare/v0.6.0...v0.6.1) (2026-06-13)
 
 _No notable changes._
