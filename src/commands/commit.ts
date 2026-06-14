@@ -124,16 +124,27 @@ export async function commitCommand(opts: CommitOptions = {}): Promise<void> {
       log.success(t('Working tree clean — nothing to commit.'));
       return;
     }
-    log.info(t('No files are staged yet.'));
-    const toStage = await checkbox({
-      message: t('Pick the files to include in this commit:'),
-      choices: stageable.map((f) => ({ name: f, value: f })),
+    log.info(t('No files are staged yet, but {n} file(s) have changes.', { n: stageable.length }));
+    const stageAction = await select({
+      message: t('How would you like to proceed?'),
+      choices: [
+        { name: t('Stage all changes and commit'), value: 'all' as const, short: t('Stage all') },
+        { name: t('Pick specific files to stage'), value: 'pick' as const, short: t('Pick files') },
+      ],
     });
-    if (toStage.length === 0) {
-      log.dim(t('No files selected — nothing to commit.'));
-      return;
+    if (stageAction === 'all') {
+      runGit(['add', '-A']);
+    } else {
+      const toStage = await checkbox({
+        message: t('Pick the files to include in this commit:'),
+        choices: stageable.map((f) => ({ name: f, value: f })),
+      });
+      if (toStage.length === 0) {
+        log.dim(t('No files selected — nothing to commit.'));
+        return;
+      }
+      runGit(['add', '--', ...toStage]);
     }
-    runGit(['add', '--', ...toStage]);
     staged = getStagedFiles();
   }
 

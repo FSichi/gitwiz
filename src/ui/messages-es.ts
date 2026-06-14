@@ -96,6 +96,13 @@ export const MESSAGES_ES: Record<string, string> = {
   'The commit subject is {n} characters (recommended ≤ 72).':
     'El título del commit tiene {n} caracteres (recomendado ≤ 72).',
   'No files are staged yet.': 'Todavía no hay archivos staged.',
+  'No files are staged yet, but {n} file(s) have changes.':
+    'Todavía no stagedeaste nada, pero veo {n} archivo(s) con cambios.',
+  'How would you like to proceed?': '¿Cómo querés proceder?',
+  'Stage all changes and commit': 'Agregar todos los cambios y commitear',
+  'Stage all': 'Agregar todos',
+  'Pick specific files to stage': 'Elegir archivos específicos para agregar',
+  'Pick files': 'Elegir archivos',
   'Pick the files to include in this commit:': 'Elegí los archivos para incluir en este commit:',
   'No files selected — nothing to commit.': 'No elegiste archivos — nada para commitear.',
   'Files in this commit:': 'Archivos en este commit:',
