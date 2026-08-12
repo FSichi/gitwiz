@@ -1,46 +1,82 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace" font-size="15">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 500" role="img" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace" font-size="15">
+  <title>gitwiz demo</title>
+  <desc>An animated terminal cycling through gitwiz branch, commit, release and a summary card.</desc>
   <style>
-    .line { opacity: 0; }
-    @keyframes s1 { 0%,2% {opacity:0} 4%,92% {opacity:1} 96%,100% {opacity:0} }
-    @keyframes s2 { 0%,10% {opacity:0} 12%,92% {opacity:1} 96%,100% {opacity:0} }
-    @keyframes s3 { 0%,20% {opacity:0} 22%,92% {opacity:1} 96%,100% {opacity:0} }
-    @keyframes s4 { 0%,30% {opacity:0} 32%,92% {opacity:1} 96%,100% {opacity:0} }
-    @keyframes s5 { 0%,42% {opacity:0} 44%,92% {opacity:1} 96%,100% {opacity:0} }
-    @keyframes s6 { 0%,56% {opacity:0} 58%,92% {opacity:1} 96%,100% {opacity:0} }
-    @keyframes s7 { 0%,66% {opacity:0} 68%,92% {opacity:1} 96%,100% {opacity:0} }
-    @keyframes s8 { 0%,76% {opacity:0} 78%,92% {opacity:1} 96%,100% {opacity:0} }
-    .a1 { animation: s1 11s linear infinite; }
-    .a2 { animation: s2 11s linear infinite; }
-    .a3 { animation: s3 11s linear infinite; }
-    .a4 { animation: s4 11s linear infinite; }
-    .a5 { animation: s5 11s linear infinite; }
-    .a6 { animation: s6 11s linear infinite; }
-    .a7 { animation: s7 11s linear infinite; }
-    .a8 { animation: s8 11s linear infinite; }
+    text { fill: #e6edf3; }
+    .g { fill: #3fb950; }
+    .d { fill: #8b949e; }
+    .b { fill: #79c0ff; }
+    .c { fill: #56d4dd; }
+    .y { fill: #e3b341; }
+    .p { fill: #d2a8ff; }
+    .sc1 { animation: sc1 20s linear infinite; }
+    .sc1b { animation: sc1b 20s linear infinite; }
+    .sc2 { animation: sc2 20s linear infinite; }
+    .sc2b { animation: sc2b 20s linear infinite; }
+    .sc3 { animation: sc3 20s linear infinite; }
+    .sc3b { animation: sc3b 20s linear infinite; }
+    .sc4 { animation: sc4 20s linear infinite; }
+    .cur { animation: blink 1.06s steps(1) infinite; }
+    @keyframes blink { 0%,49% {opacity:1} 50%,100% {opacity:0} }
+    @keyframes sc1  { 0%{opacity:1} 23%{opacity:1} 25%{opacity:0} 100%{opacity:0} }
+    @keyframes sc1b { 0%{opacity:0} 4%{opacity:1} 23%{opacity:1} 25%{opacity:0} 100%{opacity:0} }
+    @keyframes sc2  { 0%{opacity:0} 25%{opacity:0} 26.5%{opacity:1} 48%{opacity:1} 50%{opacity:0} 100%{opacity:0} }
+    @keyframes sc2b { 0%{opacity:0} 29%{opacity:0} 31%{opacity:1} 48%{opacity:1} 50%{opacity:0} 100%{opacity:0} }
+    @keyframes sc3  { 0%{opacity:0} 50%{opacity:0} 51.5%{opacity:1} 73%{opacity:1} 75%{opacity:0} 100%{opacity:0} }
+    @keyframes sc3b { 0%{opacity:0} 54%{opacity:0} 56%{opacity:1} 73%{opacity:1} 75%{opacity:0} 100%{opacity:0} }
+    @keyframes sc4  { 0%{opacity:0} 75%{opacity:0} 76.5%{opacity:1} 98%{opacity:1} 100%{opacity:0} }
   </style>
 
-  <!-- terminal window -->
-  <rect x="2" y="2" width="756" height="396" rx="12" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
-  <circle cx="26" cy="26" r="6" fill="#ff5f57"/>
-  <circle cx="46" cy="26" r="6" fill="#febc2e"/>
-  <circle cx="66" cy="26" r="6" fill="#28c840"/>
-  <text x="380" y="31" fill="#8b949e" text-anchor="middle" font-size="13">gitwiz</text>
-  <line x1="2" y1="46" x2="758" y2="46" stroke="#30363d" stroke-width="1"/>
+  <rect x="1" y="1" width="758" height="498" rx="13" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
+  <rect x="1" y="1" width="758" height="46" rx="13" fill="#161b22"/>
+  <rect x="1" y="34" width="758" height="13" fill="#161b22"/>
+  <circle cx="28" cy="24" r="6" fill="#ff5f57"/>
+  <circle cx="48" cy="24" r="6" fill="#febc2e"/>
+  <circle cx="68" cy="24" r="6" fill="#28c840"/>
+  <text x="380" y="29" class="d" text-anchor="middle" font-size="13">gitwiz — zsh</text>
 
-  <!-- session -->
-  <text class="line a1" x="28" y="84" fill="#e6edf3"><tspan fill="#7ee787">$</tspan> gitwiz commit</text>
-
-  <text class="line a2" x="28" y="116" fill="#e6edf3"><tspan fill="#a5d6ff">?</tspan> Type of change: <tspan fill="#79c0ff">✨ feat — A new feature</tspan></text>
-  <text class="line a3" x="28" y="148" fill="#e6edf3"><tspan fill="#a5d6ff">?</tspan> Scope (optional): <tspan fill="#79c0ff">auth</tspan></text>
-  <text class="line a4" x="28" y="180" fill="#e6edf3"><tspan fill="#a5d6ff">?</tspan> Short description: <tspan fill="#79c0ff">add password reset flow</tspan></text>
-
-  <g class="line a5">
-    <rect x="28" y="200" width="400" height="36" rx="6" fill="#161b22" stroke="#30363d"/>
-    <text x="44" y="224" fill="#e6edf3">feat(auth): add password reset flow</text>
+  <g class="sc1">
+    <text x="30" y="92"><tspan class="d">~/project</tspan> <tspan class="g">$</tspan> gitwiz branch<tspan class="cur" dx="4" font-weight="bold">▌</tspan></text>
+  </g>
+  <g class="sc1b">
+    <text x="30" y="128"><tspan class="c">?</tspan> What kind of work?  <tspan class="b">feature/</tspan></text>
+    <text x="30" y="160"><tspan class="c">?</tspan> Branch name  <tspan class="b">password reset</tspan></text>
+    <text x="30" y="200" class="d">  $ git switch -c feature/password-reset</text>
+    <text x="30" y="240"><tspan class="g">✔</tspan> You are now on <tspan class="b">feature/password-reset</tspan>. Happy hacking!</text>
+    <text x="30" y="276" class="d">  Next: make your changes, then run "gitwiz commit".</text>
   </g>
 
-  <text class="line a6" x="28" y="268" fill="#e6edf3"><tspan fill="#a5d6ff">?</tspan> Create this commit? <tspan fill="#79c0ff">Yes</tspan></text>
-  <text class="line a7" x="28" y="300" fill="#8b949e">$ git commit -m "feat(auth): add password reset flow"</text>
-  <text class="line a8" x="28" y="332" fill="#7ee787">✔ Commit created.</text>
-  <text class="line a8" x="28" y="368" fill="#8b949e" font-size="13">branch · commit · status · sync · undo · stash · release — wizards for everything</text>
+  <g class="sc2">
+    <text x="30" y="92"><tspan class="d">~/project</tspan> <tspan class="g">$</tspan> gitwiz commit<tspan class="cur" dx="4" font-weight="bold">▌</tspan></text>
+  </g>
+  <g class="sc2b">
+    <text x="30" y="128"><tspan class="c">?</tspan> Type of change  <tspan class="y">✨ feat</tspan> <tspan class="d">— A new feature</tspan></text>
+    <text x="30" y="160"><tspan class="c">?</tspan> Scope  <tspan class="b">auth</tspan></text>
+    <text x="30" y="192"><tspan class="c">?</tspan> Description  <tspan class="b">add password reset flow</tspan></text>
+    <rect x="30" y="212" width="392" height="38" rx="6" fill="#161b22" stroke="#30363d"/>
+    <text x="48" y="237">feat(auth): add password reset flow</text>
+    <text x="30" y="288" class="d">  $ git commit -m "feat(auth): add password reset flow"</text>
+    <text x="30" y="324"><tspan class="g">✔</tspan> Commit created.</text>
+  </g>
+
+  <g class="sc3">
+    <text x="30" y="92"><tspan class="d">~/project</tspan> <tspan class="g">$</tspan> gitwiz release start<tspan class="cur" dx="4" font-weight="bold">▌</tspan></text>
+  </g>
+  <g class="sc3b">
+    <text x="30" y="132" class="c">Since v1.1.0:  3 feat · 1 fix  →  suggested bump: minor</text>
+    <text x="30" y="172"><tspan class="c">?</tspan> What kind of release?  <tspan class="b">minor</tspan>  <tspan class="d">1.1.0 → 1.2.0</tspan>  <tspan class="g">(suggested)</tspan></text>
+    <text x="30" y="212" class="d">  $ git switch -c release/1.2.0  ·  bump 1.2.0</text>
+    <text x="30" y="252"><tspan class="g">✔</tspan> Release branch <tspan class="b">release/1.2.0</tspan> created — bumped to 1.2.0.</text>
+    <text x="30" y="288"><tspan class="p">📝</tspan> CHANGELOG.md generated from your commits</text>
+  </g>
+
+  <g class="sc4">
+    <text x="380" y="150" text-anchor="middle" font-size="40" font-weight="bold">gitwiz</text>
+    <text x="380" y="184" text-anchor="middle" class="d" font-size="16">friendly git — for humans and AI agents</text>
+    <text x="380" y="248" text-anchor="middle"><tspan class="y">✦</tspan> branch · commit · status · sync · undo · stash · release</text>
+    <text x="380" y="288" text-anchor="middle"><tspan class="c">🌎</tspan> English &amp; Español      <tspan class="c">🤖</tspan> AI-agent ready</text>
+    <text x="380" y="324" text-anchor="middle" class="d">open source · npm · TypeScript · Windows / macOS / Linux</text>
+    <rect x="262" y="350" width="236" height="40" rx="8" fill="#161b22" stroke="#30363d"/>
+    <text x="380" y="375" text-anchor="middle"><tspan class="g">$</tspan> npm i -g <tspan class="b">@fsichi/gitwiz</tspan></text>
+  </g>
 </svg>
