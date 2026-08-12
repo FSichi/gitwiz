@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0](https://github.com/FSichi/gitwiz/compare/v1.3.0...v1.4.0) (2026-08-11)
+
+### Features
+
+* **gh:** add a GitHub namespace for pull requests, reviews and boards ([4b760e7](https://github.com/FSichi/gitwiz/commit/4b760e72cf0a00de6d5f58361a6426034445cb7c))
+
 ## [1.3.0](https://github.com/FSichi/gitwiz/compare/v1.2.0...v1.3.0) (2026-06-14)
 
 ### Features
