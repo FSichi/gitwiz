@@ -11,28 +11,57 @@ export function isVerbose(): boolean {
   return verbose;
 }
 
+// ── JSON mode ────────────────────────────────────────────────────────────────
+// When a command runs with --json its stdout belongs to the caller's parser, so
+// every human-facing line has to disappear — including the echoed commands.
+// Warnings and errors still go to stderr, where they can't corrupt the payload.
+
+let jsonMode = false;
+
+export function setJsonMode(value: boolean): void {
+  jsonMode = value;
+}
+
+export function isJsonMode(): boolean {
+  return jsonMode;
+}
+
+/** Print the machine-readable payload. The only thing a --json run writes to stdout. */
+export function emitJson(data: unknown): void {
+  console.log(JSON.stringify(data, null, 2));
+}
+
 // ── Logging ──────────────────────────────────────────────────────────────────
 
 export const log = {
   info(message: string): void {
+    if (jsonMode) return;
     console.log(message);
   },
   success(message: string): void {
+    if (jsonMode) return;
     console.log(pc.green(`  ✔ ${message}`));
   },
   warn(message: string): void {
+    if (jsonMode) {
+      console.error(pc.yellow(`  ⚠ ${message}`));
+      return;
+    }
     console.log(pc.yellow(`  ⚠ ${message}`));
   },
   error(message: string): void {
     console.error(pc.red(`  ✖ ${message}`));
   },
   dim(message: string): void {
+    if (jsonMode) return;
     console.log(pc.dim(message));
   },
   step(message: string): void {
+    if (jsonMode) return;
     console.log(pc.cyan(message));
   },
   blank(): void {
+    if (jsonMode) return;
     console.log();
   },
 };
@@ -129,9 +158,15 @@ function formatArgs(args: string[]): string {
   return args.map((a) => (/[\s"']/.test(a) ? JSON.stringify(a) : a)).join(' ');
 }
 
+/** Print the command about to run — users learn the tool by seeing what gitwiz does. */
+export function echoCommand(bin: string, args: string[]): void {
+  if (jsonMode) return;
+  console.log(pc.dim(`    $ ${bin} ${formatArgs(args)}`));
+}
+
 /** Print the git command about to run — users learn git by seeing what gitwiz does. */
 export function echoGitCommand(args: string[]): void {
-  console.log(pc.dim(`    $ git ${formatArgs(args)}`));
+  echoCommand('git', args);
 }
 
 /**
