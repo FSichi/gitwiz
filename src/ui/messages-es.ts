@@ -480,4 +480,213 @@ export const MESSAGES_ES: Record<string, string> = {
   'Run "gitwiz --version" to verify.': 'Corré "gitwiz --version" para verificar.',
   'Update failed.': 'La actualización falló.',
   'Try running the command manually: {cmd}': 'Intentá correr el comando manualmente: {cmd}',
+
+  // ---- github (gh) --------------------------------------------------------
+  'Work with GitHub: pull requests, boards and issues (requires the gh CLI)':
+    'Trabajá con GitHub: pull requests, tableros e issues (necesita el CLI gh)',
+  'Open a pull request for the current branch': 'Abrí un pull request para la rama actual',
+  'branch to merge into': 'rama a la que se hace el merge',
+  'pull request title — runs without prompts when set':
+    'título del pull request — corre sin preguntas cuando se usa',
+  'pull request description': 'descripción del pull request',
+  'open as a draft': 'abrir como borrador',
+  'The GitHub CLI (gh) is not installed.': 'El CLI de GitHub (gh) no está instalado.',
+  'Install it from https://cli.github.com — gitwiz uses it for everything GitHub.':
+    'Instalalo desde https://cli.github.com — gitwiz lo usa para todo lo de GitHub.',
+  'You are not logged in to GitHub.': 'No estás autenticado en GitHub.',
+  'Run: gh auth login': 'Corré: gh auth login',
+  'Run "gh auth login" to authenticate.': 'Corré "gh auth login" para autenticarte.',
+  'Could not run the GitHub CLI (gh): {message}':
+    'No se pudo ejecutar el CLI de GitHub (gh): {message}',
+  'Install it from https://cli.github.com and run "gh auth login".':
+    'Instalalo desde https://cli.github.com y corré "gh auth login".',
+  'gh {sub} failed (exit code {code}).': 'gh {sub} falló (código de salida {code}).',
+  'gh {args} failed{detail}': 'gh {args} falló{detail}',
+  'gh returned output that is not valid JSON.': 'gh devolvió una salida que no es JSON válido.',
+  'Run the same command with --verbose to see what it printed.':
+    'Corré el mismo comando con --verbose para ver qué imprimió.',
+  'Your token is missing the "project" scope. Run: gh auth refresh -s project':
+    'A tu token le falta el scope "project". Corré: gh auth refresh -s project',
+  'Your token is missing a scope. Run: gh auth refresh -s <scope>':
+    'A tu token le falta un scope. Corré: gh auth refresh -s <scope>',
+  'This repository has no GitHub remote named "origin".':
+    'Este repositorio no tiene un remote de GitHub llamado "origin".',
+  'Add one with: git remote add origin <url>': 'Agregá uno con: git remote add origin <url>',
+  'This repository has no remote named "origin".':
+    'Este repositorio no tiene un remote llamado "origin".',
+  'Switch to the branch you want to open a pull request from.':
+    'Cambiate a la rama desde la que querés abrir el pull request.',
+  'You are on "{branch}", which is a base branch.':
+    'Estás en "{branch}", que es una rama base.',
+  'Pull requests are opened from a work branch. Create one with "gitwiz branch".':
+    'Los pull requests se abren desde una rama de trabajo. Creá una con "gitwiz branch".',
+  'This branch already has an open pull request:':
+    'Esta rama ya tiene un pull request abierto:',
+  'Push new commits to this branch and the pull request updates itself.':
+    'Pusheá commits nuevos a esta rama y el pull request se actualiza solo.',
+  'You have uncommitted changes — they will not be part of this pull request.':
+    'Tenés cambios sin commitear — no van a formar parte de este pull request.',
+  'Continue anyway?': '¿Seguir igual?',
+  'Nothing was created. Commit your changes with "gitwiz commit" first.':
+    'No se creó nada. Commiteá tus cambios con "gitwiz commit" primero.',
+  'Which branch should this pull request merge into?':
+    '¿A qué rama tiene que hacer merge este pull request?',
+  'the usual target for feature work': 'el destino habitual para features',
+  'production': 'producción',
+  'A pull request cannot merge "{branch}" into itself.':
+    'Un pull request no puede hacer merge de "{branch}" en sí misma.',
+  'Pushing "{branch}" to origin...': 'Subiendo "{branch}" a origin...',
+  'Pushing {count} new commit(s)...': 'Subiendo {count} commit(s) nuevo(s)...',
+  '"{branch}" has no commits that {base} does not already have.':
+    '"{branch}" no tiene commits que {base} no tenga ya.',
+  'Pull request title': 'Título del pull request',
+  'The title cannot be empty.': 'El título no puede estar vacío.',
+  'Use the {count} commit(s) on this branch as the description?':
+    '¿Usar los {count} commit(s) de esta rama como descripción?',
+  'Description (optional)': 'Descripción (opcional)',
+  'Open as a draft?': '¿Abrir como borrador?',
+  'Changes': 'Cambios',
+  '(draft)': '(borrador)',
+  'Pull request': 'Pull request',
+  'Create this pull request?': '¿Crear este pull request?',
+  'Cancelled — nothing was created.': 'Cancelado — no se creó nada.',
+  'Pull request created.': 'Pull request creado.',
+
+  // ---- gh: listings -------------------------------------------------------
+  'List repositories': 'Listá repositorios',
+  'List the organizations your account belongs to':
+    'Listá las organizaciones a las que pertenece tu cuenta',
+  'List the project boards of an account': 'Listá los tableros de una cuenta',
+  'print machine-readable output (for agents and scripts)':
+    'imprimí salida legible por máquina (para agentes y scripts)',
+  'organization or user': 'organización o usuario',
+  'organization or user that owns the boards': 'organización o usuario dueño de los tableros',
+  'how many to show': 'cuántos mostrar',
+  'Your GitHub account': 'Tu cuenta de GitHub',
+  '(personal)': '(personal)',
+  'You do not belong to any organization.': 'No pertenecés a ninguna organización.',
+  'Organizations ({count})': 'Organizaciones ({count})',
+  'See a board with: gitwiz gh projects': 'Mirá un tablero con: gitwiz gh projects',
+  'Whose repositories do you want to see?': '¿De quién querés ver los repositorios?',
+  'Mine': 'Míos',
+  'No repositories found.': 'No se encontraron repositorios.',
+  'Repositories ({count})': 'Repositorios ({count})',
+  'today': 'hoy',
+  'yesterday': 'ayer',
+  '{n}d ago': 'hace {n}d',
+  '{n}mo ago': 'hace {n}m',
+  '{n}y ago': 'hace {n}a',
+  'Which account do you want to see boards for?': '¿De qué cuenta querés ver los tableros?',
+  'personal projects': 'proyectos personales',
+  '"{owner}" has no open projects.': '"{owner}" no tiene proyectos abiertos.',
+  'Reading boards needs the read:project scope: gh auth refresh -s read:project':
+    'Leer tableros necesita el scope read:project: gh auth refresh -s read:project',
+  'Boards of {owner} ({count})': 'Tableros de {owner} ({count})',
+  'Open one to see its columns?': '¿Abrir uno para ver sus columnas?',
+  'No, that is all': 'No, eso es todo',
+  '"{title}" has no items yet.': '"{title}" todavía no tiene items.',
+  '{title} — {count} items': '{title} — {count} items',
+  '(no status)': '(sin estado)',
+  'Add a task with: gitwiz gh task': 'Agregá una tarea con: gitwiz gh task',
+  'Which board?': '¿Qué tablero?',
+
+  // ---- gh: task -----------------------------------------------------------
+  'Create an issue and put it on a project board, filling every field':
+    'Creá un issue y ponelo en un tablero, completando todos los campos',
+  'organization that owns the board': 'organización dueña del tablero',
+  'project number': 'número del proyecto',
+  'repository the issue belongs to': 'repositorio al que pertenece el issue',
+  'task title — runs without prompts when set':
+    'título de la tarea — corre sin preguntas cuando se usa',
+  'task description': 'descripción de la tarea',
+  '"{value}" is not a project number.': '"{value}" no es un número de proyecto.',
+  '"{owner}" has no repositories to create the issue in.':
+    '"{owner}" no tiene repositorios donde crear el issue.',
+  'Which repository should hold the issue?': '¿En qué repositorio va el issue?',
+  'Task title': 'Título de la tarea',
+  'Labels (space to select, enter to confirm)':
+    'Labels (espacio para seleccionar, enter para confirmar)',
+  '{field}?': '¿{field}?',
+  '— leave empty —': '— dejar vacío —',
+  'No active iteration on "{field}" — skipping it.':
+    'No hay iteración activa en "{field}" — se saltea.',
+  'Labels': 'Labels',
+  'Left empty': 'Sin completar',
+  'New task': 'Tarea nueva',
+  'Create it?': '¿Crearla?',
+  'Task created and added to the board.': 'Tarea creada y agregada al tablero.',
+  'These fields were left empty: {fields}': 'Estos campos quedaron vacíos: {fields}',
+  'A card without them will not show up when the board is filtered.':
+    'Una tarjeta sin ellos no aparece cuando se filtra el tablero.',
+
+  // ---- gh: review ---------------------------------------------------------
+  'Review a pull request: see it, run it, approve or ask for changes':
+    'Revisá un pull request: miralo, corrélo, aprobalo o pedí cambios',
+  'pull request number': 'número del pull request',
+  'approve without prompting': 'aprobar sin preguntar',
+  'request changes without prompting': 'pedir cambios sin preguntar',
+  'leave a comment without prompting': 'dejar un comentario sin preguntar',
+  '"{value}" is not a pull request number.': '"{value}" no es un número de pull request.',
+  'There are no open pull requests in {repo}.': 'No hay pull requests abiertos en {repo}.',
+  'Which pull request do you want to review?': '¿Qué pull request querés revisar?',
+  ' · draft': ' · borrador',
+  'in {n} file(s)': 'en {n} archivo(s)',
+  '{n} check(s) failing': '{n} check(s) fallando',
+  '{n} check(s) still running': '{n} check(s) todavía corriendo',
+  'All checks passed': 'Todos los checks pasaron',
+  'No checks': 'Sin checks',
+  'Files': 'Archivos',
+  '  …and {n} more': '  …y {n} más',
+  'Reviews so far': 'Reviews hasta ahora',
+  'See the diff': 'Ver el diff',
+  'Check it out locally to run it': 'Traerlo local para correrlo',
+  'Approve': 'Aprobar',
+  'Request changes': 'Pedir cambios',
+  'Leave a comment': 'Dejar un comentario',
+  'Open in the browser': 'Abrir en el navegador',
+  'You are on "{branch}". Run the tests, then come back.':
+    'Estás en "{branch}". Corré los tests y volvé.',
+  'GitHub does not let you review your own pull request.':
+    'GitHub no te deja revisar tu propio pull request.',
+  'Comment (optional)': 'Comentario (opcional)',
+  'What needs to change?': '¿Qué hay que cambiar?',
+  'Say what needs to change.': 'Decí qué hay que cambiar.',
+  'Approve #{n}?': '¿Aprobar #{n}?',
+  'Request changes on #{n}?': '¿Pedir cambios en #{n}?',
+  'Comment on #{n}?': '¿Comentar en #{n}?',
+  'Cancelled — nothing was sent.': 'Cancelado — no se envió nada.',
+  'Approved.': 'Aprobado.',
+  'Changes requested.': 'Cambios pedidos.',
+  'Comment sent.': 'Comentario enviado.',
+
+  // ---- interactive menu ---------------------------------------------------
+  'where am I and what to do next': 'dónde estoy y qué hacer ahora',
+  'create a guided commit': 'crear un commit guiado',
+  'start a new work branch': 'empezar una rama de trabajo',
+  'update my branch safely': 'actualizar mi rama sin riesgo',
+  'undo something safely': 'deshacer algo sin riesgo',
+  'set changes aside for later': 'guardar cambios para después',
+  'bump version + changelog': 'subir versión + changelog',
+  'merge, tag, publish': 'mergear, taggear, publicar',
+  'pull requests, reviews, boards…': 'pull requests, reviews, tableros…',
+  'set up gitwiz here': 'configurar gitwiz acá',
+  'update to latest version': 'actualizar a la última versión',
+  'What do you want to do on GitHub?': '¿Qué querés hacer en GitHub?',
+  'open a pull request': 'abrir un pull request',
+  'review a pull request': 'revisar un pull request',
+  'add a task to a board': 'agregar una tarea a un tablero',
+  'see the boards': 'ver los tableros',
+  'list repositories': 'listar repositorios',
+  'list my organizations': 'listar mis organizaciones',
+  '← back': '← volver',
+
+  // ---- gaps found auditing the catalog against every t() call -------------
+  'Fetching from origin...': 'Trayendo cambios de origin...',
+  'Pulling latest {branch}...': 'Trayendo lo último de {branch}...',
+  'Merge {branch} into {target}': 'Mergear {branch} en {target}',
+  'Also merge into {branch}': 'También mergear en {branch}',
+  'Create tag {tag}': 'Crear el tag {tag}',
+  'Push to origin': 'Subir a origin',
+  'Delete release branch': 'Borrar la rama de release',
+  '✓ in sync': '✓ al día',
 };

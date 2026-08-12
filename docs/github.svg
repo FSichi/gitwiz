@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" font-family="ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#161b22"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="20" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <style>
+    .line { opacity: 0; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+    .a1 { animation: fadeUp 0.4s ease-out 0.4s forwards; }
+    .a2 { animation: fadeUp 0.4s ease-out 0.6s forwards; }
+    .a3 { animation: fadeUp 0.4s ease-out 0.8s forwards; }
+    .a4 { animation: fadeUp 0.4s ease-out 1.0s forwards; }
+    .a5 { animation: fadeUp 0.4s ease-out 1.2s forwards; }
+    .a6 { animation: fadeUp 0.4s ease-out 1.4s forwards; }
+    .a7 { animation: fadeUp 0.4s ease-out 1.7s forwards; }
+    .a8 { animation: fadeUp 0.4s ease-out 2.0s forwards; }
+    .a9 { animation: fadeUp 0.4s ease-out 2.3s forwards; }
+    .ar { animation: fadeUp 0.4s ease-out 2.7s forwards; }
+    .cur { animation: blink 1s step-end infinite; }
+  </style>
+
+  <!-- Background -->
+  <rect width="900" height="560" fill="url(#bg)"/>
+
+  <!-- Terminal -->
+  <rect x="60" y="40" width="780" height="480" rx="14" fill="#0d1117" stroke="#30363d" stroke-width="1.5" filter="url(#shadow)"/>
+
+  <!-- Title bar -->
+  <rect x="60" y="40" width="780" height="44" rx="14" fill="#161b22"/>
+  <rect x="60" y="85" width="780" height="1" fill="#30363d"/>
+  <circle cx="86" cy="62" r="6" fill="#ff5f57"/>
+  <circle cx="106" cy="62" r="6" fill="#febc2e"/>
+  <circle cx="126" cy="62" r="6" fill="#28c840"/>
+  <text x="450" y="67" fill="#8b949e" text-anchor="middle" font-size="13">gitwiz gh — GitHub without leaving the terminal</text>
+
+  <!-- Left column: COMMANDS -->
+  <text x="100" y="115" fill="#7ee787" font-size="13" font-weight="700" letter-spacing="1">GITHUB COMMANDS</text>
+  <line x1="100" y1="122" x2="238" y2="122" stroke="#238636" stroke-width="2" stroke-linecap="round"/>
+
+  <g class="line a1">
+    <rect x="100" y="136" width="360" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="156" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="156" fill="#e6edf3" font-size="13">gitwiz gh pr</text>
+    <text x="290" y="156" fill="#484f58" font-size="11">open a pull request</text>
+  </g>
+
+  <g class="line a2">
+    <rect x="100" y="174" width="360" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="194" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="194" fill="#e6edf3" font-size="13">gitwiz gh review</text>
+    <text x="290" y="194" fill="#484f58" font-size="11">read it, run it, approve</text>
+  </g>
+
+  <g class="line a3">
+    <rect x="100" y="212" width="360" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="232" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="232" fill="#e6edf3" font-size="13">gitwiz gh task</text>
+    <text x="290" y="232" fill="#484f58" font-size="11">issue → board, every field</text>
+  </g>
+
+  <g class="line a4">
+    <rect x="100" y="250" width="360" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="270" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="270" fill="#e6edf3" font-size="13">gitwiz gh projects</text>
+    <text x="290" y="270" fill="#484f58" font-size="11">boards and their columns</text>
+  </g>
+
+  <g class="line a5">
+    <rect x="100" y="288" width="360" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="308" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="308" fill="#e6edf3" font-size="13">gitwiz gh repos</text>
+    <text x="290" y="308" fill="#484f58" font-size="11">what moved, and when</text>
+  </g>
+
+  <g class="line a6">
+    <rect x="100" y="326" width="360" height="30" rx="5" fill="#161b22" stroke="#21262d"/>
+    <text x="116" y="346" fill="#7ee787" font-size="13">$</text>
+    <text x="132" y="346" fill="#e6edf3" font-size="13">gitwiz gh orgs</text>
+    <text x="290" y="346" fill="#484f58" font-size="11">your organizations</text>
+  </g>
+
+  <!-- Left column: what the board command guarantees -->
+  <g class="line a9">
+    <rect x="100" y="376" width="360" height="88" rx="6" fill="#0d1117" stroke="#1f6feb" stroke-width="1"/>
+    <text x="116" y="398" fill="#58a6ff" font-size="11" font-weight="700">NO HALF-FILLED CARDS</text>
+    <text x="116" y="420" fill="#8b949e" font-size="11">Reads the board's real schema and asks for</text>
+    <text x="116" y="436" fill="#8b949e" font-size="11">every field — then tells you which ones you</text>
+    <text x="116" y="452" fill="#8b949e" font-size="11">left empty, and why that hides the card.</text>
+  </g>
+
+  <!-- Right column: REQUIREMENTS -->
+  <text x="490" y="115" fill="#d29922" font-size="13" font-weight="700" letter-spacing="1">WHAT YOU NEED</text>
+  <line x1="490" y1="122" x2="608" y2="122" stroke="#9e6a03" stroke-width="2" stroke-linecap="round"/>
+
+  <g class="line a7">
+    <rect x="490" y="136" width="310" height="128" rx="6" fill="#161b22" stroke="#21262d"/>
+    <text x="506" y="158" fill="#7ee787" font-size="12">1.</text>
+    <text x="528" y="158" fill="#e6edf3" font-size="12">GitHub CLI installed</text>
+    <text x="528" y="175" fill="#484f58" font-size="11">cli.github.com</text>
+
+    <text x="506" y="200" fill="#7ee787" font-size="12">2.</text>
+    <text x="528" y="200" fill="#e6edf3" font-size="12">Logged in once</text>
+    <text x="528" y="217" fill="#484f58" font-size="11">gh auth login</text>
+
+    <text x="506" y="242" fill="#7ee787" font-size="12">3.</text>
+    <text x="528" y="242" fill="#e6edf3" font-size="12">For boards: project scope</text>
+    <text x="528" y="259" fill="#484f58" font-size="11">gh auth refresh -s project</text>
+  </g>
+
+  <g class="line a8">
+    <rect x="490" y="276" width="310" height="60" rx="6" fill="#0d1117" stroke="#238636" stroke-width="1"/>
+    <text x="506" y="298" fill="#7ee787" font-size="11" font-weight="700">NO TOKENS IN GITWIZ</text>
+    <text x="506" y="320" fill="#8b949e" font-size="11">gh owns your credentials. Nothing to set up.</text>
+  </g>
+
+  <!-- Right column: agent mode -->
+  <text x="490" y="368" fill="#a371f7" font-size="13" font-weight="700" letter-spacing="1">FOR AGENTS</text>
+  <line x1="490" y1="375" x2="588" y2="375" stroke="#8957e5" stroke-width="2" stroke-linecap="round"/>
+
+  <g class="line ar">
+    <rect x="490" y="388" width="310" height="76" rx="6" fill="#161b22" stroke="#21262d"/>
+    <text x="506" y="410" fill="#7ee787" font-size="11">$</text>
+    <text x="520" y="410" fill="#e6edf3" font-size="11">gitwiz gh projects --json</text>
+    <text x="506" y="432" fill="#484f58" font-size="10">Only the payload on stdout — warnings go to</text>
+    <text x="506" y="448" fill="#484f58" font-size="10">stderr, so a parser never gets prose.</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="450" y="500" fill="#484f58" text-anchor="middle" font-size="11">Everything the GitHub connector cannot see — Projects v2 included</text>
+</svg>

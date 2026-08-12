@@ -26,6 +26,8 @@ After installing, the command is just `gitwiz` (e.g. `gitwiz status`).
 
 Requires Node.js >= 20 and git. Nothing else — no git-flow binary, no tokens, no setup.
 
+The optional `gitwiz gh` commands additionally need the [GitHub CLI](https://cli.github.com) ([requirements](#requirements)). Even then there is no token to configure: `gh` holds your credentials, never gitwiz.
+
 ## Commands
 
 Run `gitwiz` on its own (in a terminal) to open an interactive menu listing everything below — handy when you don't remember the exact command. Or call any command directly:
@@ -41,6 +43,7 @@ Run `gitwiz` on its own (in a terminal) to open an interactive menu listing ever
 | `gitwiz stash` | Set changes aside for later with a description, and restore/inspect/delete them safely. |
 | `gitwiz release start` | Bump the version (with a suggested bump), generate/update `CHANGELOG.md`, open a release branch. |
 | `gitwiz release finish` | Merge the release, create the tag, push, clean up. |
+| `gitwiz gh …` | Work with GitHub: pull requests, reviews, project boards ([see below](#github-gitwiz-gh)). |
 | `gitwiz update` | Update gitwiz to the latest version (auto-detects npm/yarn/pnpm/bun). |
 
 ### `gitwiz status`
@@ -78,6 +81,51 @@ Checks for the latest version of gitwiz and updates it. Auto-detects your packag
 Not an npm project? No problem — without a `package.json` the current version is read from the latest release tag, so Python/Go/.NET repos can release too (the tag carries the version).
 
 The changelog merge is structural: your existing `CHANGELOG.md` preamble (badges, custom intro) is preserved verbatim, old releases are kept, and re-running the same version replaces its section instead of duplicating it. CRLF files stay CRLF.
+
+### GitHub (`gitwiz gh`)
+
+<p align="center">
+  <img src="docs/github.svg" alt="gitwiz gh commands" width="720">
+</p>
+
+Everything that lives on GitHub rather than in git sits under its own `gh` namespace — in the interactive menu too, where **github** opens its own submenu instead of crowding the git commands. The separation is not just tidiness: these are the only commands that depend on an external tool being installed and authenticated, and the name says so before you run one.
+
+| Command | What it does |
+|---|---|
+| `gitwiz gh pr` | Open a pull request for the current branch: pushes it if needed, suggests the title from your commits, and builds the description from them. |
+| `gitwiz gh review` | Review a pull request: pick one, see its size, files and checks, read the diff or check it out to run it, then approve, request changes or comment. |
+| `gitwiz gh task` | Create an issue and put it on a project board — asking for **every** field the board defines, so no card lands half-filled. |
+| `gitwiz gh projects` | List the boards of an account and see how many items sit in each column. |
+| `gitwiz gh repos` | List repositories, with how long ago each one moved. |
+| `gitwiz gh orgs` | List the organizations your account belongs to. |
+
+#### Requirements
+
+1. **The GitHub CLI.** Install `gh` from [cli.github.com](https://cli.github.com) (or `winget install GitHub.cli`, `brew install gh`, `sudo apt install gh`). gitwiz shells out to it for every GitHub operation, so if `gh` is missing the command stops with that exact message instead of failing obscurely.
+
+2. **One login.** Run `gh auth login` once and follow the browser flow. **gitwiz never sees, stores or asks for a token** — credentials live in `gh`, which is why there is still nothing to configure in gitwiz itself.
+
+3. **The `project` scope, only if you use boards.** This is the one that surprises people: a default login can read repos and pull requests but *not* project boards. Reading them needs `read:project` and writing to them needs `project`. If a scope is missing, gitwiz detects it in the error and prints the exact command to fix it:
+
+   ```bash
+   gh auth refresh -s project
+   ```
+
+4. **A GitHub remote**, for the commands that act on the repository you are standing in (`gh pr`, `gh review`). gitwiz reads `origin` to work out the `owner/repo`, and understands both SSH and HTTPS remotes.
+
+Check where you stand at any time with `gh auth status`, which prints your account and current scopes.
+
+#### Notes
+
+**Already have a pull request open?** `gitwiz gh pr` detects it and tells you so instead of failing: a pull request follows its branch, so pushing new commits updates it — there is nothing to re-submit.
+
+**About boards.** Project boards (GitHub Projects v2) usually carry custom fields like Status, Area, Priority or Size, each with options a team picked. `gitwiz gh task` reads that schema live and offers exactly those options — never invented ones — and when you leave a field empty it says so, because a card missing a field disappears the moment someone filters the board. If a Sprint field has no active iteration, it is skipped and gitwiz tells you why.
+
+**For agents and scripts.** `review`, `task`, `projects`, `repos` and `orgs` accept `--json`, which suppresses every human-facing line and prints only the payload — including on empty results, so a parser never receives nothing. Combined with `--title`/`--body` style flags, these run fully headless.
+
+```bash
+gitwiz gh projects --owner my-org --json
+```
 
 ## Development workflow
 
@@ -312,6 +360,18 @@ gitwiz status                                       # read-only, always safe
 ```
 
 `gitwiz commit` runs non-interactively as soon as `--type` and `-m` are given; `gitwiz branch` when `--type` and `--name` are given.
+
+The GitHub commands work the same way, and the read-only ones add `--json` so an agent gets a parseable payload instead of prose:
+
+```bash
+gitwiz gh pr --title "feat(auth): add login" --base develop
+gitwiz gh review --pr 42 --approve
+gitwiz gh task --owner my-org --project 29 --title "Fix the login redirect"
+gitwiz gh projects --owner my-org --json
+gitwiz gh repos --owner my-org --json
+```
+
+With `--json`, stdout carries only the payload: warnings move to stderr and the echoed commands are silenced, so nothing can corrupt what the caller parses.
 
 Committing to a **protected branch** (`main`/`develop` by default) fails fast in non-interactive mode — agents should create a work branch first. `--allow-protected` overrides when it's genuinely intended.
 

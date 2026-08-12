@@ -3,6 +3,12 @@ import { readFileSync } from 'node:fs';
 import { Command } from 'commander';
 import { branchCommand } from './commands/branch.js';
 import { commitCommand } from './commands/commit.js';
+import { ghOrgsCommand } from './commands/gh-orgs.js';
+import { ghPrCommand } from './commands/gh-pr.js';
+import { ghProjectsCommand } from './commands/gh-projects.js';
+import { ghReposCommand } from './commands/gh-repos.js';
+import { ghReviewCommand } from './commands/gh-review.js';
+import { ghTaskCommand } from './commands/gh-task.js';
 import { initCommand } from './commands/init.js';
 import { menuCommand } from './commands/menu.js';
 import { releaseFinishCommand } from './commands/release-finish.js';
@@ -15,7 +21,7 @@ import { updateCommand } from './commands/update.js';
 import { checkForUpdates } from './core/update-checker.js';
 import { GitwizError } from './ui/errors.js';
 import { t } from './ui/i18n.js';
-import { log, setVerbose } from './ui/output.js';
+import { log, setJsonMode, setVerbose } from './ui/output.js';
 
 const pkg = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
@@ -30,8 +36,12 @@ program
   .description(t('Friendly git workflows — wizards for branching, commits, releases, sync, and undo'))
   .version(pkg.version)
   .option('--verbose', t('also echo the read-only git commands gitwiz runs'))
-  .hook('preAction', (thisCommand) => {
+  .hook('preAction', (thisCommand, actionCommand) => {
     setVerbose(Boolean(thisCommand.opts().verbose));
+    // --json lives on the subcommands that support it, so read it from the one
+    // actually running. It silences every human-facing line: with it on, stdout
+    // is the caller's to parse.
+    setJsonMode(Boolean(actionCommand.opts().json));
     // Each command guards interactivity itself, so flag-driven runs work headless.
   });
 
@@ -90,6 +100,57 @@ program
     const pm = opts.npm ? 'npm' : opts.yarn ? 'yarn' : opts.pnpm ? 'pnpm' : opts.bun ? 'bun' : undefined;
     await updateCommand({ packageManager: pm });
   });
+
+// GitHub lives under its own namespace: unlike the rest of gitwiz, these
+// commands need the gh CLI installed and authenticated, and the name says so.
+const gh = program
+  .command('gh')
+  .description(t('Work with GitHub: pull requests, boards and issues (requires the gh CLI)'));
+
+gh.command('pr')
+  .description(t('Open a pull request for the current branch'))
+  .option('-b, --base <branch>', t('branch to merge into'))
+  .option('-t, --title <title>', t('pull request title — runs without prompts when set'))
+  .option('-B, --body <body>', t('pull request description'))
+  .option('--draft', t('open as a draft'))
+  .action(ghPrCommand);
+
+gh.command('review')
+  .description(t('Review a pull request: see it, run it, approve or ask for changes'))
+  .option('-p, --pr <number>', t('pull request number'))
+  .option('--approve', t('approve without prompting'))
+  .option('--request-changes', t('request changes without prompting'))
+  .option('--comment <body>', t('leave a comment without prompting'))
+  .option('--json', t('print machine-readable output (for agents and scripts)'))
+  .action(ghReviewCommand);
+
+gh.command('task')
+  .description(t('Create an issue and put it on a project board, filling every field'))
+  .option('-o, --owner <owner>', t('organization that owns the board'))
+  .option('-p, --project <number>', t('project number'))
+  .option('-r, --repo <owner/repo>', t('repository the issue belongs to'))
+  .option('-t, --title <title>', t('task title — runs without prompts when set'))
+  .option('-B, --body <body>', t('task description'))
+  .option('--json', t('print machine-readable output (for agents and scripts)'))
+  .action(ghTaskCommand);
+
+gh.command('projects')
+  .description(t('List the project boards of an account'))
+  .option('-o, --owner <owner>', t('organization or user that owns the boards'))
+  .option('--json', t('print machine-readable output (for agents and scripts)'))
+  .action(ghProjectsCommand);
+
+gh.command('repos')
+  .description(t('List repositories'))
+  .option('-o, --owner <owner>', t('organization or user'))
+  .option('-l, --limit <n>', t('how many to show'))
+  .option('--json', t('print machine-readable output (for agents and scripts)'))
+  .action(ghReposCommand);
+
+gh.command('orgs')
+  .description(t('List the organizations your account belongs to'))
+  .option('--json', t('print machine-readable output (for agents and scripts)'))
+  .action(ghOrgsCommand);
 
 const release = program
   .command('release')
