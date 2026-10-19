@@ -11,11 +11,17 @@ export function parseRepoWebUrl(remoteUrl: string | null): RepoWebInfo | null {
   if (!remoteUrl) return null;
   let url = remoteUrl.trim();
 
-  const sshMatch = url.match(/^(?:ssh:\/\/)?git@([^:/]+)[:/](.+?)(?:\.git)?\/?$/);
-  if (sshMatch) {
-    url = `https://${sshMatch[1]}/${sshMatch[2]}`;
+  // ssh://[user@]host[:port]/path — the port belongs to SSH, not to the web URL.
+  const sshUrl = url.match(/^ssh:\/\/(?:[^@/]+@)?([^:/]+)(?::\d+)?\/(.+?)(?:\.git)?\/?$/);
+  // scp-like user@host:path (any user: GitHub Enterprise logins are not always "git").
+  const scpLike = url.match(/^[\w.-]+@([^:/]+):(?!\/)(.+?)(?:\.git)?\/?$/);
+  const ssh = sshUrl ?? scpLike;
+  if (ssh) {
+    url = `https://${ssh[1]}/${ssh[2]}`;
   } else if (/^https?:\/\//.test(url)) {
-    url = url.replace(/\.git\/?$/, '');
+    // Drop embedded credentials (https://user:token@host/…) — this URL ends up
+    // in CHANGELOG links, and a token must never be committed.
+    url = url.replace(/^(https?:\/\/)[^@/]+@/, '$1').replace(/\.git\/?$/, '');
   } else {
     return null;
   }

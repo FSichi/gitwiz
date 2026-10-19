@@ -1,9 +1,10 @@
+import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { branchCommand } from '../../src/commands/branch.js';
 import { commitCommand } from '../../src/commands/commit.js';
 import { releaseFinishCommand } from '../../src/commands/release-finish.js';
 import { releaseStartCommand } from '../../src/commands/release-start.js';
-import { captureGit, getCurrentBranch, tagExists } from '../../src/core/git.js';
+import { captureGit, captureGitPaths, getCurrentBranch, tagExists } from '../../src/core/git.js';
 import { createTempRepo, type TempRepo } from './helpers/temp-repo.js';
 
 // The command functions operate on process.cwd(), so each test chdirs into a
@@ -93,6 +94,60 @@ describe('non-interactive commands (agent-facing)', () => {
 
     await releaseFinishCommand({ yes: true });
     expect(tagExists('v1.1.0')).toBe(true);
+  });
+
+  // An agent that passes half the flags must learn which ones are missing.
+  it('commit with only some flags names the missing ones', async () => {
+    repo().writeFile('a.txt', 'x');
+    await expect(commitCommand({ message: 'x', all: true })).rejects.toMatchObject({
+      hint: expect.stringContaining('--type'),
+    });
+  });
+
+  it('branch with only some flags names the missing ones', async () => {
+    repo();
+    await expect(branchCommand({ name: 'x' })).rejects.toMatchObject({
+      hint: expect.stringContaining('--name'),
+    });
+  });
+
+  it('commits files with spaces and accents from a subfolder', async () => {
+    const r = repo();
+    r.writeFile('src/con espacio.ts', 'a');
+    r.writeFile('src/configuración.ts', 'b');
+    process.chdir(join(r.dir, 'src'));
+    await commitCommand({ type: 'feat', message: 'add files', all: true });
+    expect(captureGitPaths(['show', '--name-only', '--format=', 'HEAD'])).toEqual([
+      'src/con espacio.ts',
+      'src/configuración.ts',
+    ]);
+  });
+
+  it('release start reads the version from tags when package.json has none', async () => {
+    const r = repo({ initialCommit: false });
+    r.commit('feat: initial', {
+      'package.json': '{\n  "name": "app",\n  "private": true\n}\n',
+      '.gitwizrc.json': JSON.stringify({ mainBranch: 'main', developBranch: 'main', tagPrefix: 'v' }),
+    });
+    r.git('tag', '-a', 'v2.0.0', '-m', 'Release 2.0.0');
+    r.commit('fix: patch it', { 'a.txt': 'x' });
+
+    await releaseStartCommand({ patch: true });
+    expect(getCurrentBranch()).toBe('release/2.0.1');
+    // The manifest without a version is left exactly as it was.
+    expect(JSON.parse(captureGit(['show', 'HEAD:package.json']))).toEqual({ name: 'app', private: true });
+  });
+
+  it('release finish refuses to start with unrelated uncommitted changes', async () => {
+    const r = repo({ initialCommit: false });
+    r.commit('feat: initial', {
+      '.gitwizrc.json': JSON.stringify({ mainBranch: 'main', developBranch: 'main', tagPrefix: 'v' }),
+    });
+    r.git('branch', 'release/1.0.0');
+    r.writeFile('wip.txt', 'half done');
+    await expect(releaseFinishCommand({ yes: true })).rejects.toThrow(/uncommitted changes/);
+    expect(tagExists('v1.0.0')).toBe(false);
+    expect(getCurrentBranch()).toBe('main');
   });
 
   it('release start --minor then finish --yes run fully headless', async () => {

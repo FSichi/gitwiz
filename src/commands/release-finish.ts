@@ -239,6 +239,12 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
     }
     runGit(['add', '-A']);
     runGit(['commit', '-m', `chore(release): ${tag} updates`]);
+  } else if (!isWorkingTreeClean()) {
+    // Finishing switches branches and merges; carrying unrelated edits through
+    // that can stop it halfway, after some steps already ran.
+    throw new GitwizError(t('You have uncommitted changes.'), {
+      hint: t('Commit or stash them before finishing the release.'),
+    });
   }
 
   log.blank();

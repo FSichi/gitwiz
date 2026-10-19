@@ -2,13 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { GitwizError } from '../ui/errors.js';
 import { setLocale, type Locale } from '../ui/i18n.js';
-import {
-  getRepoRoot,
-  localBranchExists,
-  remoteBranchExists,
-  tryCaptureGit,
-  type GitOptions,
-} from './git.js';
+import { getRepoRoot, tryCaptureGit, type GitOptions } from './git.js';
 
 export interface BranchType {
   type: string;
@@ -93,22 +87,54 @@ function builtinDefaults(): GitwizConfig {
 // Branch auto-detection
 // ---------------------------------------------------------------------------
 
-export function detectMainBranch(opts: GitOptions = {}): string {
-  const originHead = tryCaptureGit(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], opts);
-  if (originHead?.startsWith('origin/')) return originHead.slice('origin/'.length);
-
-  for (const candidate of ['main', 'master']) {
-    if (localBranchExists(candidate, opts) || remoteBranchExists(candidate, opts)) return candidate;
-  }
-  return 'main';
+/** The branches detection looks at: local ones, origin's, and what origin/HEAD points to. */
+export interface BranchRefs {
+  local: Set<string>;
+  remote: Set<string>;
+  originHead: string | null;
 }
 
-export function detectDevelopBranch(mainBranch: string, opts: GitOptions = {}): string {
-  for (const candidate of ['develop', 'development', 'dev']) {
-    if (localBranchExists(candidate, opts) || remoteBranchExists(candidate, opts)) return candidate;
+/**
+ * Read every local and origin branch in ONE git call. Detection used to probe
+ * each candidate name with its own `rev-parse` — up to nine processes on every
+ * command in a repo without a config file, which is felt on Windows.
+ */
+export function readBranchRefs(opts: GitOptions = {}): BranchRefs {
+  const refs: BranchRefs = { local: new Set(), remote: new Set(), originHead: null };
+  const out = tryCaptureGit(
+    ['for-each-ref', '--format=%(refname)%00%(symref)', 'refs/heads/', 'refs/remotes/origin/'],
+    opts,
+  );
+  for (const line of (out ?? '').split('\n')) {
+    const [ref = '', symref = ''] = line.split('\0');
+    if (ref.startsWith('refs/heads/')) {
+      refs.local.add(ref.slice('refs/heads/'.length));
+    } else if (ref === 'refs/remotes/origin/HEAD') {
+      if (symref.startsWith('refs/remotes/origin/')) {
+        refs.originHead = symref.slice('refs/remotes/origin/'.length);
+      }
+    } else if (ref.startsWith('refs/remotes/origin/')) {
+      refs.remote.add(ref.slice('refs/remotes/origin/'.length));
+    }
   }
+  return refs;
+}
+
+function firstExisting(candidates: string[], refs: BranchRefs): string | undefined {
+  return candidates.find((name) => refs.local.has(name) || refs.remote.has(name));
+}
+
+export function detectMainBranch(opts: GitOptions = {}, refs = readBranchRefs(opts)): string {
+  return refs.originHead ?? firstExisting(['main', 'master'], refs) ?? 'main';
+}
+
+export function detectDevelopBranch(
+  mainBranch: string,
+  opts: GitOptions = {},
+  refs = readBranchRefs(opts),
+): string {
   // Trunk-based fallback: work branches start from the main branch.
-  return mainBranch;
+  return firstExisting(['develop', 'development', 'dev'], refs) ?? mainBranch;
 }
 
 // ---------------------------------------------------------------------------
@@ -320,9 +346,12 @@ export function loadConfig(opts: GitOptions = {}): ResolvedConfig {
     ? validateUserConfig(user.raw, user.source === 'rc' ? RC_FILENAME : 'package.json "gitwiz" key')
     : {};
 
-  config.mainBranch = userConfig.mainBranch ?? detectMainBranch(opts);
+  // Branch refs are read lazily: a config that pins both branches costs no git call.
+  let refs: BranchRefs | undefined;
+  const branchRefs = () => (refs ??= readBranchRefs(opts));
+  config.mainBranch = userConfig.mainBranch ?? detectMainBranch(opts, branchRefs());
   config.developBranch =
-    userConfig.developBranch ?? detectDevelopBranch(config.mainBranch, opts);
+    userConfig.developBranch ?? detectDevelopBranch(config.mainBranch, opts, branchRefs());
   if (userConfig.tagPrefix !== undefined) config.tagPrefix = userConfig.tagPrefix;
   if (userConfig.language !== undefined) config.language = userConfig.language;
   if (userConfig.branchTypes) {

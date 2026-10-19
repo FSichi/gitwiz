@@ -10,7 +10,10 @@ function detectLocale(): Locale {
   }
   try {
     // Reliable on Windows, where the LANG-style env vars are usually absent.
-    const system = Intl.DateTimeFormat().resolvedOptions().locale;
+    // Every Intl service resolves the same default locale; PluralRules does it in
+    // well under a millisecond, where DateTimeFormat loads time-zone data (~10 ms
+    // on every gitwiz start).
+    const system = new Intl.PluralRules().resolvedOptions().locale;
     if (system?.toLowerCase().startsWith('es')) return 'es';
   } catch {
     // fall through to English

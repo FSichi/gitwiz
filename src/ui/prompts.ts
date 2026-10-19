@@ -111,10 +111,14 @@ export async function checkbox<T>(opts: {
   ) as T[];
 }
 
-export function assertInteractive(): void {
+/**
+ * Guard a prompt. `hint` names the flags that avoid it, so a script or agent
+ * that passed only some of them learns exactly what is missing.
+ */
+export function assertInteractive(hint?: string): void {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new GitwizError(t('This command is interactive and requires a terminal.'), {
-      hint: t('Run it directly in your terminal, not from a script or CI.'),
+      hint: hint ?? t('Run it directly in your terminal, not from a script or CI.'),
     });
   }
 }

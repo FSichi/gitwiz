@@ -24,6 +24,19 @@ describe('parseCommitRecord', () => {
     expect(c.breakingNote).toContain('tokens are invalidated');
   });
 
+  // Agents append "Co-Authored-By:" trailers; they must not end up in the changelog.
+  it('ends the BREAKING CHANGE note at the next trailer', () => {
+    const c = parseCommitRecord(
+      record('feat!: new config', 'BREAKING CHANGE: the rc file moved\n\nCo-Authored-By: Claude <noreply@anthropic.com>'),
+    )!;
+    expect(c.breakingNote).toBe('the rc file moved');
+  });
+
+  it('folds a multi-line BREAKING CHANGE note onto one line', () => {
+    const c = parseCommitRecord(record('feat: x', 'BREAKING-CHANGE: line one\nline two\nRefs #12'))!;
+    expect(c.breakingNote).toBe('line one line two');
+  });
+
   it('returns type null for non-conventional subjects', () => {
     const c = parseCommitRecord(record('Fixed stuff quickly'))!;
     expect(c.type).toBeNull();

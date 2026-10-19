@@ -441,9 +441,11 @@ export const MESSAGES_ES: Record<string, string> = {
   'Work base branch': 'Rama base de trabajo',
   '(where new branches start; same as production = trunk-based)':
     '(de donde salen las ramas nuevas; igual a producción = trunk-based)',
-  'Release tag prefix': 'Prefijo de tags de release',
-  '("v" tags releases as v1.2.3; leave empty for 1.2.3)':
-    '("v" taguea releases como v1.2.3; vacío para 1.2.3)',
+  'Release tag format:': 'Formato de los tags de release:',
+  'recommended': 'recomendado',
+  'no prefix': 'sin prefijo',
+  'Custom prefix…': 'Prefijo personalizado…',
+  'Tag prefix (e.g. "release-"):': 'Prefijo del tag (ej. "release-"):',
   'Branch {branch} exists on origin — it will be used when needed.':
     'La rama {branch} existe en origin — se va a usar cuando haga falta.',
   'No commits yet — make your first commit, then create {branch}.':
@@ -689,4 +691,33 @@ export const MESSAGES_ES: Record<string, string> = {
   'Push to origin': 'Subir a origin',
   'Delete release branch': 'Borrar la rama de release',
   '✓ in sync': '✓ al día',
+
+  // ── Headless guidance (agents and scripts) ─────────────────────────────────
+  'To commit without prompts, pass both --type and -m.':
+    'Para commitear sin preguntas, pasá --type y -m juntos.',
+  'To create a branch without prompts, pass both --type and --name.':
+    'Para crear una rama sin preguntas, pasá --type y --name juntos.',
+  'Commit or stash them before finishing the release.':
+    'Commitealos o guardalos con stash antes de terminar el release.',
+
+  // ── GitHub ─────────────────────────────────────────────────────────────────
+  'Pass only one of --approve or --request-changes.':
+    'Pasá solo uno: --approve o --request-changes.',
+  'The review comment cannot be empty.': 'El comentario de la revisión no puede estar vacío.',
+  'Add --comment "<what to change>" to --request-changes.':
+    'Agregá --comment "<qué cambiar>" a --request-changes.',
+  'Say which pull request to review with --pr <number>.':
+    'Indicá qué pull request revisar con --pr <número>.',
+  'This folder is not a GitHub repository, so the issue has no home.':
+    'Esta carpeta no es un repositorio de GitHub, así que el issue no tiene dónde crearse.',
+  'Pass --repo <owner/repo>.': 'Pasá --repo <owner/repo>.',
+  '"{owner}" has several boards — say which one.': '"{owner}" tiene varios tableros — indicá cuál.',
+  'Pass --project <number>: {projects}': 'Pasá --project <número>: {projects}',
+  '"{value}" is not a valid number.': '"{value}" no es un número válido.',
+
+  // ── Updates ────────────────────────────────────────────────────────────────
+  'gitwiz {latest} is available (you have {current}).':
+    'Hay una versión nueva de gitwiz: {latest} (tenés la {current}).',
+  'Update with: gitwiz update': 'Actualizá con: gitwiz update',
+  'You already have the latest version ({version}).': 'Ya tenés la última versión ({version}).',
 };

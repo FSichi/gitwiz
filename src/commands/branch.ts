@@ -28,7 +28,8 @@ export async function branchCommand(opts: BranchOptions = {}): Promise<void> {
   const { config, source } = loadConfig();
   const nonInteractive = Boolean(opts.type && opts.name);
 
-  if (getCurrentBranch() === '') {
+  const startBranch = getCurrentBranch();
+  if (startBranch === '') {
     throw new GitwizError(t('You are not on any branch (detached HEAD).'), {
       hint: t('Switch to a branch first: git switch {branch}', { branch: config.developBranch }),
     });
@@ -47,7 +48,9 @@ export async function branchCommand(opts: BranchOptions = {}): Promise<void> {
     branchType = found;
     nameRaw = opts.name!;
   } else {
-    assertInteractive();
+    assertInteractive(
+      opts.type || opts.name ? t('To create a branch without prompts, pass both --type and --name.') : undefined,
+    );
     if (source === 'detected') {
       log.dim(
         t('Using auto-detected branches (main: {main}, work base: {develop}). Run "gitwiz init" to pin them.', {
@@ -119,38 +122,51 @@ export async function branchCommand(opts: BranchOptions = {}): Promise<void> {
     }
   }
 
-  if (updateBase) {
-    if (!localBranchExists(base) && !remoteBranchExists(base)) {
-      throw new GitwizError(t('Base branch "{base}" does not exist locally or on origin.', { base }), {
-        hint: t('Check your gitwiz config or run "gitwiz init".'),
-      });
+  const popStash = () => {
+    if (stashed && !tryRunGit(['stash', 'pop'])) {
+      log.warn(t('Your stashed changes could not be re-applied cleanly.'));
+      log.dim(`  ${t('Resolve the conflicts, then run: git stash drop')}`);
     }
-    runGit(['switch', base]);
-    if (hasRemote() && remoteBranchExists(base)) {
-      if (!tryRunGit(['pull', '--ff-only', 'origin', base])) {
-        log.warn(t('Could not fast-forward {base} (offline, or the branch has diverged).', { base }));
-        if (!nonInteractive) {
-          const go = await confirm({
-            message: t('Create {branch} from your local {base} anyway?', { branch: target, base }),
-            default: true,
-          });
-          if (!go) {
-            if (stashed) runGit(['stash', 'pop']);
-            log.dim(t('Cancelled.'));
-            return;
+  };
+  // Cancelling or failing midway must leave the user where they started, with
+  // their changes back — not on the base branch with the work hidden in a stash.
+  const restoreStart = () => {
+    if (getCurrentBranch() !== startBranch) tryRunGit(['switch', startBranch]);
+    popStash();
+  };
+
+  try {
+    if (updateBase) {
+      if (!localBranchExists(base) && !remoteBranchExists(base)) {
+        throw new GitwizError(t('Base branch "{base}" does not exist locally or on origin.', { base }), {
+          hint: t('Check your gitwiz config or run "gitwiz init".'),
+        });
+      }
+      runGit(['switch', base]);
+      if (hasRemote() && remoteBranchExists(base)) {
+        if (!tryRunGit(['pull', '--ff-only', 'origin', base])) {
+          log.warn(t('Could not fast-forward {base} (offline, or the branch has diverged).', { base }));
+          if (!nonInteractive) {
+            const go = await confirm({
+              message: t('Create {branch} from your local {base} anyway?', { branch: target, base }),
+              default: true,
+            });
+            if (!go) {
+              restoreStart();
+              log.dim(t('Cancelled.'));
+              return;
+            }
           }
         }
       }
     }
+    runGit(['switch', '-c', target]);
+  } catch (err) {
+    restoreStart();
+    throw err;
   }
-  runGit(['switch', '-c', target]);
 
-  if (stashed) {
-    if (!tryRunGit(['stash', 'pop'])) {
-      log.warn(t('Your stashed changes could not be re-applied cleanly.'));
-      log.dim(`  ${t('Resolve the conflicts, then run: git stash drop')}`);
-    }
-  }
+  popStash();
 
   let doPush = false;
   if (hasRemote()) {

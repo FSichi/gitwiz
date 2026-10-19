@@ -1,5 +1,4 @@
 import pc from 'picocolors';
-import { ensureGh } from '../core/gh.js';
 import { currentUser, listOrgs } from '../core/gh-project.js';
 import { t } from '../ui/i18n.js';
 import { emitJson, isJsonMode, log, section } from '../ui/output.js';
@@ -9,9 +8,7 @@ export interface GhOrgsOptions {
 }
 
 export async function ghOrgsCommand(opts: GhOrgsOptions = {}): Promise<void> {
-  ensureGh();
-  const orgs = listOrgs();
-  const user = currentUser();
+  const [orgs, user] = await Promise.all([listOrgs(), currentUser()]);
 
   if (isJsonMode()) {
     emitJson({ user, organizations: orgs });

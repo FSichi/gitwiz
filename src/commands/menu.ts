@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
 import pc from 'picocolors';
+import { PACKAGE } from '../package-info.js';
 import { t } from '../ui/i18n.js';
 import { banner, log, outro } from '../ui/output.js';
 import { select } from '../ui/prompts.js';
@@ -20,9 +20,7 @@ import { syncCommand } from './sync.js';
 import { undoCommand } from './undo.js';
 import { updateCommand } from './update.js';
 
-const { version } = JSON.parse(
-  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
-) as { version: string };
+const { version } = PACKAGE;
 
 type MenuAction =
   | 'status'

@@ -94,4 +94,20 @@ describe('release flow end-to-end', () => {
     // Finishing the same version twice fails on the tag pre-flight.
     expect(() => performReleaseFinish(config, '1.2.0', opts)).toThrow(/already exists/);
   });
+
+  // git's v:refname sort puts 1.3.0-rc.1 *above* 1.3.0; the changelog of the
+  // next release would then repeat everything 1.3.0 already shipped.
+  it('picks the last tag by semver, with a release above its own release candidate', () => {
+    const t = createTempRepo();
+    try {
+      for (const tag of ['v1.2.0', 'v1.3.0-rc.1', 'v1.3.0', 'v1.10.0-beta.2', 'not-a-version']) {
+        t.git('tag', tag);
+      }
+      expect(findLastTag('v', { cwd: t.dir })).toBe('v1.10.0-beta.2');
+      t.git('tag', 'v1.10.0');
+      expect(findLastTag('v', { cwd: t.dir })).toBe('v1.10.0');
+    } finally {
+      t.cleanup();
+    }
+  });
 });

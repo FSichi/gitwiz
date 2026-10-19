@@ -1,6 +1,6 @@
 import pc from 'picocolors';
-import { loadConfig } from '../core/config.js';
-import { captureGh, captureGhJson, ensureGh, ensureRepoSlug } from '../core/gh.js';
+import { baseBranchFor, loadConfig } from '../core/config.js';
+import { captureGh, captureGhJson, ensureRepoSlug } from '../core/gh.js';
 import {
   captureGit,
   ensureGitRepo,
@@ -50,7 +50,6 @@ export function buildPrBody(commits: string[]): string {
 
 export async function ghPrCommand(opts: GhPrOptions = {}): Promise<void> {
   ensureGitRepo();
-  ensureGh();
   const { config } = loadConfig();
   const slug = ensureRepoSlug();
   const branch = getCurrentBranch();
@@ -96,25 +95,28 @@ export async function ghPrCommand(opts: GhPrOptions = {}): Promise<void> {
     }
   }
 
-  // Resolve the base branch.
+  // Resolve the base branch. The branch's own type knows where it came from:
+  // a hotfix/ goes back to production, a feature/ to the work base.
+  const branchType = config.branchTypes.find((bt) => branch.startsWith(bt.prefix));
+  const typeBase = branchType ? baseBranchFor(branchType, config) : config.developBranch;
   let base: string;
   if (opts.base) {
     base = opts.base;
   } else if (nonInteractive) {
-    base = config.developBranch;
+    base = typeBase;
   } else {
     assertInteractive();
-    base = await select({
-      message: t('Which branch should this pull request merge into?'),
-      choices: [
-        {
-          name: config.developBranch,
-          value: config.developBranch,
-          hint: t('the usual target for feature work'),
-        },
-        { name: config.mainBranch, value: config.mainBranch, hint: t('production') },
-      ],
-    });
+    const candidates = [
+      { name: config.developBranch, value: config.developBranch, hint: t('the usual target for feature work') },
+      { name: config.mainBranch, value: config.mainBranch, hint: t('production') },
+    ]
+      // Trunk-based repos have one base: offer it once.
+      .filter((c, i, all) => all.findIndex((o) => o.value === c.value) === i)
+      .sort((a, b) => Number(b.value === typeBase) - Number(a.value === typeBase));
+    base =
+      candidates.length === 1
+        ? candidates[0]!.value
+        : await select({ message: t('Which branch should this pull request merge into?'), choices: candidates });
   }
   if (base === branch) {
     throw new GitwizError(t('A pull request cannot merge "{branch}" into itself.', { branch }));

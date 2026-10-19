@@ -1,5 +1,4 @@
 import pc from 'picocolors';
-import { ensureGh } from '../core/gh.js';
 import {
   currentUser,
   listOrgs,
@@ -36,21 +35,24 @@ export function groupByStatus(items: { status?: string }[]): { status: string; c
  */
 export async function resolveOwner(explicit: string | undefined, interactive: boolean): Promise<string> {
   if (explicit) return explicit;
-  const orgs = listOrgs();
-  if (orgs.length === 0) return currentUser();
+  const me = currentUser();
+  // Settle `me` even when an early return leaves it unused, so a failed lookup
+  // never surfaces later as an unhandled rejection.
+  me.catch(() => {});
+  const orgs = await listOrgs();
+  if (orgs.length === 0) return me;
   if (!interactive) return orgs[0]!;
   assertInteractive();
   return select({
     message: t('Which account do you want to see boards for?'),
     choices: [
       ...orgs.map((o) => ({ name: o, value: o })),
-      { name: t('Mine'), value: currentUser(), hint: t('personal projects') },
+      { name: t('Mine'), value: await me, hint: t('personal projects') },
     ],
   });
 }
 
 export async function ghProjectsCommand(opts: GhProjectsOptions = {}): Promise<void> {
-  ensureGh();
   const owner = await resolveOwner(opts.owner, !isJsonMode());
   const projects = listProjects(owner);
 
@@ -82,13 +84,17 @@ export async function ghProjectsCommand(opts: GhProjectsOptions = {}): Promise<v
   });
   if (!chosen) return;
 
-  const items = listProjectItems(chosen.number, owner);
+  const limit = 100;
+  const items = listProjectItems(chosen.number, owner, limit);
   if (items.length === 0) {
     log.info(t('"{title}" has no items yet.', { title: chosen.title }));
     return;
   }
 
-  section(t('{title} — {count} items', { title: chosen.title, count: String(items.length) }));
+  // A full page means the board may hold more than was read — say so instead of
+  // presenting a truncated total as exact.
+  const count = items.length >= limit ? `${limit}+` : String(items.length);
+  section(t('{title} — {count} items', { title: chosen.title, count }));
   for (const { status, count } of groupByStatus(items)) {
     const label = status === '' ? pc.dim(t('(no status)')) : pc.cyan(status);
     log.info(`  ${label} ${pc.dim(`· ${count}`)}`);
@@ -97,8 +103,12 @@ export async function ghProjectsCommand(opts: GhProjectsOptions = {}): Promise<v
   log.dim(t('Add a task with: gitwiz gh task'));
 }
 
-/** Shared by `gh task`: pick a board interactively, failing clearly when there is none. */
-export async function pickProject(owner: string): Promise<ProjectSummary> {
+/**
+ * Shared by `gh task`: pick a board, failing clearly when there is none. Without
+ * a terminal only an unambiguous board is picked; otherwise the error lists the
+ * candidates instead of opening a prompt nobody can answer.
+ */
+export async function pickProject(owner: string, interactive = true): Promise<ProjectSummary> {
   const projects = listProjects(owner);
   if (projects.length === 0) {
     throw new GitwizError(t('"{owner}" has no open projects.', { owner }), {
@@ -106,6 +116,13 @@ export async function pickProject(owner: string): Promise<ProjectSummary> {
     });
   }
   if (projects.length === 1) return projects[0]!;
+  if (!interactive) {
+    throw new GitwizError(t('"{owner}" has several boards — say which one.', { owner }), {
+      hint: t('Pass --project <number>: {projects}', {
+        projects: projects.map((p) => `#${p.number} ${p.title}`).join(', '),
+      }),
+    });
+  }
   return select({
     message: t('Which board?'),
     choices: projects.map((p) => ({ name: p.title, value: p, hint: `#${p.number}` })),
