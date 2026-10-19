@@ -72,13 +72,13 @@ A friendly face for `git stash`: save your current changes with a description ("
 
 ### `gitwiz update`
 
-Checks for the latest version of gitwiz and updates it. Auto-detects your package manager (npm, yarn, pnpm, bun) or force one with `--npm`, `--yarn`, `--pnpm`, or `--bun`. gitwiz also checks for updates in the background when you run any command — if a new version is available, you'll see a notification at the end of the output.
+Checks for the latest version of gitwiz and updates it — or tells you you're already on it, without reinstalling. It uses the package manager that installed gitwiz (npm, yarn, pnpm, bun, judged by where gitwiz lives), or force one with `--npm`, `--yarn`, `--pnpm`, or `--bun`. gitwiz also looks for new versions in the background, at most once a day and without ever making a command wait; when one is out you'll see a notice at the end of the output (only in a terminal, never in `--json` output). Turn it off with `GITWIZ_NO_UPDATE_CHECK=1` (`NO_UPDATE_NOTIFIER` and `CI` also do).
 
 ### `gitwiz release`
 
 `release start` checks nothing else is mid-release, updates your work branch, creates `release/<version>`, bumps `package.json` (and `package-lock.json`), and generates the changelog section from your conventional commits since the last tag — with compare/commit links when your remote is GitHub or GitLab. It also **suggests the bump** from those commits (any breaking change → major, any `feat` → minor, otherwise patch). Review it, then `release finish` merges it back (`--no-ff`), tags `v<version>`, pushes, and deletes the release branch.
 
-Not an npm project? No problem — without a `package.json` the current version is read from the latest release tag, so Python/Go/.NET repos can release too (the tag carries the version).
+Not an npm project? No problem — without a `package.json` (or with one that has no `"version"`, like a private app or a monorepo root) the current version is read from the latest release tag, so Python/Go/.NET repos can release too (the tag carries the version). Tags are compared as semver, so `v1.3.0` correctly counts as newer than `v1.3.0-rc.1`.
 
 The changelog merge is structural: your existing `CHANGELOG.md` preamble (badges, custom intro) is preserved verbatim, old releases are kept, and re-running the same version replaces its section instead of duplicating it. CRLF files stay CRLF.
 
@@ -118,6 +118,10 @@ Check where you stand at any time with `gh auth status`, which prints your accou
 #### Notes
 
 **Already have a pull request open?** `gitwiz gh pr` detects it and tells you so instead of failing: a pull request follows its branch, so pushing new commits updates it — there is nothing to re-submit.
+
+**Where does the pull request go?** To the base your branch type comes from: a `hotfix/` targets the production branch, everything else the work branch. `--base` overrides it.
+
+**No upfront checks.** gitwiz does not ask `gh` whether it is installed and logged in before every command (that check alone is a network round trip). It just runs, and if `gh` is missing or logged out, the failure is turned into the same clear message and fix.
 
 **About boards.** Project boards (GitHub Projects v2) usually carry custom fields like Status, Area, Priority or Size, each with options a team picked. `gitwiz gh task` reads that schema live and offers exactly those options — never invented ones — and when you leave a field empty it says so, because a card missing a field disappears the moment someone filters the board. If a Sprint field has no active iteration, it is skipped and gitwiz tells you why.
 
@@ -359,7 +363,7 @@ gitwiz release finish --yes
 gitwiz status                                       # read-only, always safe
 ```
 
-`gitwiz commit` runs non-interactively as soon as `--type` and `-m` are given; `gitwiz branch` when `--type` and `--name` are given.
+`gitwiz commit` runs non-interactively as soon as `--type` and `-m` are given; `gitwiz branch` when `--type` and `--name` are given. Pass only one of the pair without a terminal and the error names the flag that is missing. In a terminal, any flag you pass simply answers its own question in the wizard.
 
 The GitHub commands work the same way, and the read-only ones add `--json` so an agent gets a parseable payload instead of prose:
 
@@ -373,16 +377,40 @@ gitwiz gh repos --owner my-org --json
 
 With `--json`, stdout carries only the payload: warnings move to stderr and the echoed commands are silenced, so nothing can corrupt what the caller parses.
 
+`gh review` verdicts: `--approve` (optionally with `--comment`), `--request-changes --comment "what to change"` (GitHub requires the comment), or `--comment` alone. A verdict combined with `--json` is still submitted, and the payload reports it in `submitted`. Without a terminal, `gh task` never prompts: if the account has several boards it asks for `--project`, and outside a GitHub repository for `--repo`.
+
 Committing to a **protected branch** (`main`/`develop` by default) fails fast in non-interactive mode — agents should create a work branch first. `--allow-protected` overrides when it's genuinely intended.
+
+## Troubleshooting
+
+### Windows: `"C:\Users\…\Author" no se reconoce como un comando…` / `is not recognized as an internal or external command`
+
+This happens **before gitwiz starts**, and only when an argument contains a space (`gitwiz commit -m "add login"`), with [NVM for Windows](https://github.com/coreybutler/nvm-windows) 2.x installed under a folder with a space (the default `%LOCALAPPDATA%\Author Software\nvm`). Its shims (`…\nvm\.shim\gitwiz.exe`, the same for every global CLI) launch the npm wrapper as `cmd.exe /c "<path with space>\gitwiz.cmd" <args>`. When the arguments carry quotes too, `cmd.exe` strips the first and last quote of that line and splits the path at the space. Any global CLI installed the same way fails identically (try `cdk --version "a b"`), so it is not something gitwiz can fix from the inside.
+
+Until the shim is fixed upstream, any of these works:
+
+- Call gitwiz through Node directly, e.g. with a shell function (Git Bash / WSL — `~/.bashrc`):
+
+  ```bash
+  gitwiz() { node "$(npm root -g)/@fsichi/gitwiz/dist/cli.js" "$@"; }
+  ```
+
+- In PowerShell (`$PROFILE`):
+
+  ```powershell
+  function gitwiz { node "$(npm root -g)\@fsichi\gitwiz\dist\cli.js" @args }
+  ```
+
+- Avoid spaces in arguments (`-m add-login`), which keeps the shim's command line unquoted.
 
 ## Why gitwiz?
 
 - **Zero prerequisites** — plain git underneath. No git-flow binary, no global config.
 - **Educational** — every mutating git command is echoed before running (`--verbose` echoes the read-only ones too).
 - **Safe by default** — destructive actions double-confirm, pushed commits get revert suggestions, conflicts come with step-by-step instructions.
-- **Windows-first class** — no shell interpolation anywhere; arguments go to git verbatim. Tested on Windows, macOS and Linux.
+- **Windows-first class** — no shell interpolation anywhere; arguments go to git verbatim, and file names with spaces or accents (`configuración.ts`) are handled as-is. Tested on Windows, macOS and Linux.
 - **Bilingual** — wizards in English or Spanish, following your system locale.
-- **Tiny** — 4 runtime dependencies, fast `npx` startup.
+- **Tiny and fast** — zero runtime dependencies (one bundled file), a handful of git calls per command, quick `npx` startup.
 - **Always up to date** — checks for new versions in the background and notifies you; update with `gitwiz update`.
 
 ## License
