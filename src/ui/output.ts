@@ -133,9 +133,16 @@ export async function spin<T>(message: string, fn: () => Promise<T>): Promise<T>
 
 // ── Box (improved) ───────────────────────────────────────────────────────────
 
-/** Quote args containing whitespace or quotes so the echoed command is copy-pasteable. */
-function formatArgs(args: string[]): string {
-  return args.map((a) => (/[\s"']/.test(a) ? JSON.stringify(a) : a)).join(' ');
+/**
+ * Quote args containing whitespace or quotes so the echoed command is copy-pasteable.
+ * A multi-line argument (a commit or PR body) shows its first line only: the
+ * whole body on one escaped line is noise to read — and tokens to an agent.
+ */
+export function formatArgs(args: string[]): string {
+  return args
+    .map((a) => (a.includes('\n') ? `${a.slice(0, a.indexOf('\n')).trimEnd()} …` : a))
+    .map((a) => (/[\s"']/.test(a) ? JSON.stringify(a) : a))
+    .join(' ');
 }
 
 /** Print the command about to run — users learn the tool by seeing what gitwiz does. */
