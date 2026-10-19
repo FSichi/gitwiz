@@ -92,12 +92,6 @@ export function runGh(args: string[], opts: GhOptions = {}): void {
   }
 }
 
-/** Run a mutating gh command, returning success instead of throwing. Still echoes. */
-export function tryRunGh(args: string[], opts: GhOptions = {}): boolean {
-  echoCommand('gh', args);
-  return spawnGh(args, opts, 'inherit').status === 0;
-}
-
 /**
  * Run a read-only gh command and capture trimmed stdout. Throws on failure.
  * gh reports scope and auth problems on stderr, so we surface it verbatim —
@@ -107,14 +101,6 @@ export function captureGh(args: string[], opts: GhOptions = {}): string {
   if (opts.echo || isVerbose()) echoCommand('gh', args);
   const result = spawnGh(args, opts, 'pipe');
   return checkCaptured(args, result.status, result.stdout ?? '', result.stderr ?? '');
-}
-
-/** Like captureGh but returns null on failure. */
-export function tryCaptureGh(args: string[], opts: GhOptions = {}): string | null {
-  if (isVerbose()) echoCommand('gh', args);
-  const result = spawnGh(args, opts, 'pipe');
-  if (result.status !== 0) return null;
-  return (result.stdout ?? '').trim();
 }
 
 /** Run a gh command that emits JSON and parse it. */

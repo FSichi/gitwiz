@@ -29,10 +29,6 @@ export function setLocale(value: Locale | 'auto'): void {
   if (value !== 'auto') locale = value;
 }
 
-export function getLocale(): Locale {
-  return locale;
-}
-
 /**
  * Translate a UI string. The English text is the lookup key; a missing entry
  * falls back to English, so untranslated strings degrade gracefully.
