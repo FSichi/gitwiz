@@ -1,8 +1,14 @@
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pc from 'picocolors';
 import { buildAgentInstructions, writeManagedBlock } from '../core/ai-instructions.js';
-import { detectDevelopBranch, detectMainBranch, loadConfig, RC_FILENAME } from '../core/config.js';
+import {
+  detectDevelopBranch,
+  detectMainBranch,
+  loadConfig,
+  RC_FILENAME,
+  readBranchRefs,
+} from '../core/config.js';
 import {
   getRepoRoot,
   hasRemote,
@@ -16,6 +22,38 @@ import { rewriteJson } from '../core/json-file.js';
 import { setLocale, t, type Locale } from '../ui/i18n.js';
 import { log } from '../ui/output.js';
 import { assertInteractive, confirm, input, select } from '../ui/prompts.js';
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Parse a JSON file, or null when it is unreadable — init then starts that file fresh. */
+function readJson(path: string): Record<string, unknown> | null {
+  try {
+    const data: unknown = JSON.parse(readFileSync(path, 'utf8'));
+    return isPlainObject(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Merge the wizard's answers into an existing config. Re-running init must not
+ * wipe what was customized by hand (branchTypes, commitTypes, release…): only
+ * the keys the wizard asks about change. Exported for unit tests.
+ */
+export function mergeInitSettings(
+  existing: unknown,
+  answers: { mainBranch: string; developBranch: string; tagPrefix: string; language: Locale | 'auto' },
+): Record<string, unknown> {
+  const { language, ...branches } = answers;
+  const merged: Record<string, unknown> = isPlainObject(existing) ? { ...existing } : {};
+  Object.assign(merged, branches);
+  // 'auto' is the default, so it is stored as the absence of the key.
+  if (language === 'auto') delete merged.language;
+  else merged.language = language;
+  return merged;
+}
 
 export async function initCommand(): Promise<void> {
   assertInteractive();
@@ -45,8 +83,9 @@ export async function initCommand(): Promise<void> {
   });
   setLocale(language);
 
-  const detectedMain = detectMainBranch();
-  const detectedDevelop = detectDevelopBranch(detectedMain);
+  const refs = readBranchRefs();
+  const detectedMain = detectMainBranch({}, refs);
+  const detectedDevelop = detectDevelopBranch(detectedMain, {}, refs);
 
   const mainBranch = await input({
     message: `${t('Production branch')} ${pc.dim(t('(your stable, deployed code)'))}: `,
@@ -56,10 +95,20 @@ export async function initCommand(): Promise<void> {
     message: `${t('Work base branch')} ${pc.dim(t('(where new branches start; same as production = trunk-based)'))}: `,
     default: detectedDevelop,
   });
-  const tagPrefix = await input({
-    message: `${t('Release tag prefix')} ${pc.dim(t('("v" tags releases as v1.2.3; leave empty for 1.2.3)'))}: `,
-    default: 'v',
+  // A select, not a text prompt: an empty answer to a text prompt falls back to
+  // its default, so "no prefix" could never be chosen.
+  const prefixChoice = await select<string>({
+    message: t('Release tag format:'),
+    choices: [
+      { name: 'v1.2.3', value: 'v', hint: t('recommended') },
+      { name: '1.2.3', value: '', hint: t('no prefix') },
+      { name: t('Custom prefix…'), value: 'custom' },
+    ],
   });
+  const tagPrefix =
+    prefixChoice === 'custom'
+      ? (await input({ message: t('Tag prefix (e.g. "release-"):') })).trim()
+      : prefixChoice;
 
   // Offer to create the work base branch if it doesn't exist yet.
   const hasCommits = tryCaptureGit(['rev-parse', 'HEAD']) !== null;
@@ -86,28 +135,32 @@ export async function initCommand(): Promise<void> {
     }
   }
 
-  const settings: Record<string, unknown> = { mainBranch, developBranch, tagPrefix };
-  if (language !== 'auto') settings.language = language;
+  const answers = { mainBranch, developBranch, tagPrefix, language };
+  const withSettings = (existing: unknown) => mergeInitSettings(existing, answers);
 
-  // Choose where the config lives.
+  // Choose where the config lives: keep an existing location, ask otherwise.
+  const rcPath = join(repoRoot, RC_FILENAME);
   const pkgPath = join(repoRoot, 'package.json');
   let destination: 'rc' | 'package.json' = 'rc';
-  if (existsSync(pkgPath)) {
-    destination = await select({
-      message: t('Where should the gitwiz config be saved?'),
-      choices: [
-        { name: `${RC_FILENAME} ${pc.dim(t('(recommended — its own file)'))}`, value: 'rc' as const },
-        { name: t('package.json ("gitwiz" key)'), value: 'package.json' as const },
-      ],
-    });
+  if (!existsSync(rcPath) && existsSync(pkgPath)) {
+    destination = isPlainObject(readJson(pkgPath)?.gitwiz)
+      ? 'package.json'
+      : await select({
+          message: t('Where should the gitwiz config be saved?'),
+          choices: [
+            { name: `${RC_FILENAME} ${pc.dim(t('(recommended — its own file)'))}`, value: 'rc' as const },
+            { name: t('package.json ("gitwiz" key)'), value: 'package.json' as const },
+          ],
+        });
   }
 
   if (destination === 'rc') {
-    writeFileSync(join(repoRoot, RC_FILENAME), `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
+    const settings = withSettings(existsSync(rcPath) ? readJson(rcPath) : null);
+    writeFileSync(rcPath, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
     log.success(t('Saved {file}', { file: RC_FILENAME }));
   } else {
     rewriteJson(pkgPath, (pkg) => {
-      pkg.gitwiz = settings;
+      pkg.gitwiz = withSettings(pkg.gitwiz);
     });
     log.success(t('Saved "gitwiz" key in package.json'));
   }
