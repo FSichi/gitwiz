@@ -48,7 +48,6 @@ export const MESSAGES_ES: Record<string, string> = {
   'commit type (feat, fix, …) — runs without prompts when used with -m':
     'tipo de commit (feat, fix, …) — corre sin preguntas si se usa con -m',
   'commit scope': 'scope del commit',
-  'commit description': 'descripción del commit',
   'mark as a breaking change (optionally with a migration note)':
     'marcar como breaking change (opcionalmente con una nota de migración)',
   'stage all changes before committing': 'agregar todos los cambios antes de commitear',
@@ -77,8 +76,6 @@ export const MESSAGES_ES: Record<string, string> = {
   // ---- commit ---------------------------------------------------------------
   'The commit was rejected (a git hook may have failed).':
     'El commit fue rechazado (puede haber fallado un hook de git).',
-  'Fix the reported issue and run "gitwiz commit" again.':
-    'Arreglá el problema reportado y volvé a correr "gitwiz commit".',
   'Commit created.': 'Commit creado.',
   '"{branch}" is a protected branch — commits should arrive via work branches.':
     '"{branch}" es una rama protegida — los commits deberían llegar por ramas de trabajo.',
@@ -91,11 +88,8 @@ export const MESSAGES_ES: Record<string, string> = {
     'Cancelado. Corré "gitwiz branch" para crear una rama de trabajo.',
   'Unknown commit type "{type}".': 'Tipo de commit desconocido: "{type}".',
   'Nothing is staged.': 'No hay nada staged.',
-  'Stage the files first, or pass --all to stage everything.':
-    'Agregá los archivos primero, o pasá --all para agregar todo.',
   'The commit subject is {n} characters (recommended ≤ 72).':
     'El título del commit tiene {n} caracteres (recomendado ≤ 72).',
-  'No files are staged yet.': 'Todavía no hay archivos staged.',
   'No files are staged yet, but {n} file(s) have changes.':
     'Todavía no stagedeaste nada, pero veo {n} archivo(s) con cambios.',
   'How would you like to proceed?': '¿Cómo querés proceder?',
@@ -144,8 +138,6 @@ export const MESSAGES_ES: Record<string, string> = {
   'Branch "{branch}" already exists.': 'La rama "{branch}" ya existe.',
   'Switch to it with: git switch {branch}': 'Cambiá a ella con: git switch {branch}',
   '"{branch}" is not a valid git branch name.': '"{branch}" no es un nombre de rama válido.',
-  'Commit or stash them first — create the branch before you start editing.':
-    'Commitealos o guardalos primero — creá la rama antes de empezar a editar.',
   'You have uncommitted changes. What should we do with them?':
     'Tenés cambios sin commitear. ¿Qué hacemos con ellos?',
   'Stash them and bring them to the new branch': 'Guardarlos y llevarlos a la rama nueva',
@@ -238,12 +230,6 @@ export const MESSAGES_ES: Record<string, string> = {
     '¿Commitearlos a {branch} como parte del release?',
   'Cancelled — clean up the release branch first.':
     'Cancelado — limpiá la rama de release primero.',
-  'This will:': 'Esto va a:',
-  '1. Merge {branch} into {target} (--no-ff)': '1. Mergear {branch} a {target} (--no-ff)',
-  '2. Create tag {tag}': '2. Crear el tag {tag}',
-  '3. Push {branch} and the tag to origin': '3. Pushear {branch} y el tag a origin',
-  '4. Also merge into {branch} and push it': '4. Mergear también a {branch} y pushearla',
-  'Delete the {branch} branch': 'Borrar la rama {branch}',
   'Finish release {version}?': '¿Terminar el release {version}?',
   'Release {tag} is done! 🎉': '¡Release {tag} terminado! 🎉',
   '{branch} was NOT modified — deploy/merge to production is a separate, manual step.':
@@ -369,8 +355,6 @@ export const MESSAGES_ES: Record<string, string> = {
   '(based on {base})': '(basada en {base})',
   '↑ {n} ahead': '↑ {n} adelante',
   '↓ {n} behind': '↓ {n} atrás',
-  'in sync': 'sincronizada',
-  'of {upstream}': 'de {upstream}',
   'Not pushed to any remote yet.': 'Todavía no está pusheada a ningún remoto.',
   'A {operation} is in progress.': 'Hay un {operation} en progreso.',
   'Conflicted (fix these first):': 'En conflicto (arreglá esto primero):',
@@ -378,7 +362,6 @@ export const MESSAGES_ES: Record<string, string> = {
   'Modified (not staged):': 'Modificados (sin stagear):',
   'Untracked (new files):': 'Sin trackear (archivos nuevos):',
   'Working tree clean.': 'Todo limpio.',
-  'Suggested next steps:': 'Próximos pasos sugeridos:',
   'Suggested next steps': 'Próximos pasos sugeridos',
   // hub (interactive next-step picker)
   'Commit staged changes': 'Commitear los cambios staged',
@@ -420,16 +403,6 @@ export const MESSAGES_ES: Record<string, string> = {
   'Stash deleted.': 'Stash borrado.',
 
   // ---- menu ------------------------------------------------------------------
-  '— where am I and what to do next': '— dónde estoy y qué hacer ahora',
-  '— create a guided commit': '— crear un commit guiado',
-  '— start a new work branch': '— crear una rama de trabajo',
-  '— update my branch safely': '— actualizar mi rama de forma segura',
-  '— undo something safely': '— deshacer algo de forma segura',
-  '— set changes aside for later': '— guardar cambios para después',
-  '— bump version + changelog': '— subir versión + changelog',
-  '— merge, tag, publish': '— merge, tag, publicar',
-  '— set up gitwiz here': '— configurar gitwiz acá',
-  '— update to latest version': '— actualizar a la última versión',
   'exit': 'salir',
   'Bye!': '¡Chau!',
 
@@ -518,10 +491,6 @@ export const MESSAGES_ES: Record<string, string> = {
     'Este repositorio no tiene un remote llamado "origin".',
   'Switch to the branch you want to open a pull request from.':
     'Cambiate a la rama desde la que querés abrir el pull request.',
-  'You are on "{branch}", which is a base branch.':
-    'Estás en "{branch}", que es una rama base.',
-  'Pull requests are opened from a work branch. Create one with "gitwiz branch".':
-    'Los pull requests se abren desde una rama de trabajo. Creá una con "gitwiz branch".',
   'This branch already has an open pull request:':
     'Esta rama ya tiene un pull request abierto:',
   'Push new commits to this branch and the pull request updates itself.':
@@ -683,8 +652,6 @@ export const MESSAGES_ES: Record<string, string> = {
   '← back': '← volver',
 
   // ---- gaps found auditing the catalog against every t() call -------------
-  'Fetching from origin...': 'Trayendo cambios de origin...',
-  'Pulling latest {branch}...': 'Trayendo lo último de {branch}...',
   'Merge {branch} into {target}': 'Mergear {branch} en {target}',
   'Also merge into {branch}': 'También mergear en {branch}',
   'Create tag {tag}': 'Crear el tag {tag}',
@@ -693,8 +660,6 @@ export const MESSAGES_ES: Record<string, string> = {
   '✓ in sync': '✓ al día',
 
   // ── Headless guidance (agents and scripts) ─────────────────────────────────
-  'To commit without prompts, pass both --type and -m.':
-    'Para commitear sin preguntas, pasá --type y -m juntos.',
   'To create a branch without prompts, pass both --type and --name.':
     'Para crear una rama sin preguntas, pasá --type y --name juntos.',
   'Commit or stash them before finishing the release.':
@@ -720,4 +685,53 @@ export const MESSAGES_ES: Record<string, string> = {
     'Hay una versión nueva de gitwiz: {latest} (tenés la {current}).',
   'Update with: gitwiz update': 'Actualizá con: gitwiz update',
   'You already have the latest version ({version}).': 'Ya tenés la última versión ({version}).',
+
+  // ── 1.5: agent-facing commands ─────────────────────────────────────────────
+  'Your changes clash with {base}, so {branch} starts from your current commit instead.':
+    'Tus cambios chocan con {base}, así que {branch} sale de tu commit actual.',
+  'Your uncommitted changes came along to {branch}.': 'Tus cambios sin commitear pasaron a {branch}.',
+  '-m starts with "{found}:" but --type is "{type}".': '-m empieza con "{found}:" pero --type es "{type}".',
+  'Give the type once: in --type, or at the start of -m.':
+    'Indicá el tipo una sola vez: en --type o al principio de -m.',
+  'Nothing was committed and your changes are still there: fix what the hook reported (often the message) and run the same command again.':
+    'No se commiteó nada y tus cambios siguen ahí: corregí lo que marcó el hook (muchas veces el mensaje) y corré el mismo comando de nuevo.',
+  'To commit without prompts, pass --type and -m (or a full "type: description" in -m).':
+    'Para commitear sin preguntas, pasá --type y -m (o un "tipo: descripción" completo en -m).',
+  'Pass either --all or a list of files, not both.': 'Pasá --all o una lista de archivos, no los dos.',
+  'Those files have no changes — nothing to commit.':
+    'Esos archivos no tienen cambios — no hay nada para commitear.',
+  'Name the files to commit (gitwiz commit -m "…" -- <files>), stage them with git add, or pass --all.':
+    'Nombrá los archivos a commitear (gitwiz commit -m "…" -- <archivos>), agregalos con git add, o pasá --all.',
+  '"{branch}" is a base branch.': '"{branch}" es una rama base.',
+  'Work goes through a work branch ("gitwiz branch"). To open a PR from it on purpose, pass --base (e.g. --head {develop} --base {main}).':
+    'El trabajo va por una rama de trabajo ("gitwiz branch"). Para abrir un PR desde esta a propósito, pasá --base (ej. --head {develop} --base {main}).',
+  'Branch "{branch}" does not exist locally or on origin.':
+    'La rama "{branch}" no existe ni local ni en origin.',
+  'Pushed {count} new commit(s) — the pull request is up to date.':
+    'Se subieron {count} commit(s) nuevos — el pull request está al día.',
+  'Added "{line}" to {file} so Claude Code reads AGENTS.md.':
+    'Se agregó "{line}" a {file} para que Claude Code lea AGENTS.md.',
+  'To write only the AI-agent instructions without prompts, run: gitwiz init --agents':
+    'Para escribir solo las instrucciones para agentes de IA, sin preguntas, corré: gitwiz init --agents',
+  'Add "{line}" to the top of {file} so Claude Code reads AGENTS.md too?':
+    '¿Agregar "{line}" al principio de {file} para que Claude Code también lea AGENTS.md?',
+  'Updated {file}': 'Se actualizó {file}',
+  'Commit the uncommitted changes on {branch}': 'Commitear los cambios pendientes en {branch}',
+  'gitwiz release finish would:': 'gitwiz release finish haría esto:',
+  'Nothing was changed (--dry-run).': 'No se cambió nada (--dry-run).',
+  'Those changes were only line endings or regenerated files — nothing to commit.':
+    'Esos cambios eran solo finales de línea o archivos regenerados — no hay nada para commitear.',
+  'Could not read {file}: {message}': 'No se pudo leer {file}: {message}',
+  'only write/refresh the AI-agent instructions (AGENTS.md), without prompts':
+    'solo escribir/actualizar las instrucciones para agentes de IA (AGENTS.md), sin preguntas',
+  'commit only these files (others stay as they are)':
+    'commitear solo estos archivos (el resto queda como está)',
+  'commit description (a full "type(scope): description" also works)':
+    'descripción del commit (también sirve un "tipo(scope): descripción" completo)',
+  'commit body: the why, details, footers': 'cuerpo del commit: el porqué, detalles, footers',
+  'read the commit body from a file ("-" for stdin)':
+    'leer el cuerpo del commit de un archivo ("-" para stdin)',
+  'branch to open it from (default: the current one)': 'rama desde la que abrirlo (por defecto, la actual)',
+  'read the description from a file ("-" for stdin)': 'leer la descripción de un archivo ("-" para stdin)',
+  'list the steps it would run, change nothing': 'listar los pasos que correría, sin cambiar nada',
 };
