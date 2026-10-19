@@ -685,6 +685,10 @@ export const MESSAGES_ES: Record<string, string> = {
     'Hay una versión nueva de gitwiz: {latest} (tenés la {current}).',
   'Update with: gitwiz update': 'Actualizá con: gitwiz update',
   'You already have the latest version ({version}).': 'Ya tenés la última versión ({version}).',
+  'NVM for Windows may block the updated command until it trusts it again.':
+    'NVM for Windows puede bloquear el comando actualizado hasta volver a confiar en él.',
+  'If it says "delegated script changed since it was trusted", run: nvm reshim':
+    'Si dice "delegated script changed since it was trusted", corré: nvm reshim',
 
   // ── 1.5: agent-facing commands ─────────────────────────────────────────────
   'Your changes clash with {base}, so {branch} starts from your current commit instead.':

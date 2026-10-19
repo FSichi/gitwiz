@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { detectPackageManager } from '../../src/commands/update.js';
+import { detectPackageManager, needsNvmReshim } from '../../src/commands/update.js';
 import { isCheckDue, pendingUpdate, updateCachePath } from '../../src/core/update-checker.js';
 
 describe('detectPackageManager', () => {
@@ -14,6 +14,25 @@ describe('detectPackageManager', () => {
     ['/home/me/.bun/install/global/node_modules/@fsichi/gitwiz/dist/main.js', 'bun'],
   ])('%s → %s', (path, expected) => {
     expect(detectPackageManager(path)).toBe(expected);
+  });
+});
+
+// NVM for Windows 2.x blocked gitwiz right after `gitwiz update` (NVM4306)
+// until `nvm reshim`; the update says so only where that can happen.
+describe('needsNvmReshim', () => {
+  const nvm2 = 'C:\\Users\\me\\AppData\\Local\\Author Software\\nvm\\installs\\v24.21.0\\node_modules\\@fsichi\\gitwiz\\dist\\main.js';
+
+  it('flags an NVM for Windows 2.x install', () => {
+    expect(needsNvmReshim(nvm2, 'win32')).toBe(true);
+  });
+
+  it.each([
+    ['nvm-windows 1.x (no reshim)', 'C:\\Users\\me\\AppData\\Roaming\\nvm\\v20.11.0\\node_modules\\@fsichi\\gitwiz\\dist\\main.js', 'win32'],
+    ['a plain Node install', 'C:\\Program Files\\nodejs\\node_modules\\@fsichi\\gitwiz\\dist\\main.js', 'win32'],
+    ['nvm on macOS/Linux', '/home/me/.nvm/versions/node/v24.0.0/lib/node_modules/@fsichi/gitwiz/dist/main.js', 'linux'],
+    ['the same path off Windows', nvm2, 'linux'],
+  ] as const)('stays quiet for %s', (_label, path, platform) => {
+    expect(needsNvmReshim(path, platform)).toBe(false);
   });
 });
 
