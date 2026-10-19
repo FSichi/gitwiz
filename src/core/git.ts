@@ -47,23 +47,27 @@ const QUIET_SUBCOMMANDS = new Set([
 const NO_QUIET_FLAGS = ['--abort', '--continue', '--skip', '--quit'];
 
 /**
- * Append --quiet for noisy subcommands. Skipped when the command already sets a
- * quiet flag, uses a "--" pathspec separator (where a trailing flag would be
- * read as a path), or is a control mode that doesn't accept --quiet.
+ * Add --quiet for noisy subcommands — before a "--" pathspec separator, where a
+ * trailing flag would be read as a path. Skipped when the command already sets
+ * a quiet flag or is a control mode that doesn't accept --quiet.
  */
 function withQuiet(args: string[]): string[] {
   const sub = args[0];
   if (
-    sub !== undefined &&
-    QUIET_SUBCOMMANDS.has(sub) &&
-    !args.includes('--') &&
-    !args.includes('--quiet') &&
-    !args.includes('-q') &&
-    !args.some((a) => NO_QUIET_FLAGS.includes(a))
+    sub === undefined ||
+    !QUIET_SUBCOMMANDS.has(sub) ||
+    args.includes('--quiet') ||
+    args.includes('-q') ||
+    args.some((a) => NO_QUIET_FLAGS.includes(a))
   ) {
-    return [...args, '--quiet'];
+    return args;
   }
-  return args;
+  // The separator is the last "--" that is not the value of -m.
+  const sep = args.lastIndexOf('--');
+  if (sep > 0 && args[sep - 1] !== '-m') {
+    return [...args.slice(0, sep), '--quiet', ...args.slice(sep)];
+  }
+  return [...args, '--quiet'];
 }
 
 /** Run a mutating git command: echoes the (clean) command and streams output to the user. */
@@ -118,7 +122,10 @@ export function tryCaptureGit(args: string[], opts: GitOptions = {}): string | n
  * ("src/configuraci\303\263n.ts"), and no later git command accepts that form.
  */
 export function captureGitPaths(args: string[], opts: GitOptions = {}): string[] {
-  return captureGitRaw([...args, '-z'], opts).split('\0').filter(Boolean);
+  // After a "--" separator, -z would be read as a path.
+  const sep = args.indexOf('--');
+  const withZ = sep === -1 ? [...args, '-z'] : [...args.slice(0, sep), '-z', ...args.slice(sep)];
+  return captureGitRaw(withZ, opts).split('\0').filter(Boolean);
 }
 
 // ---------------------------------------------------------------------------

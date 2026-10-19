@@ -91,12 +91,14 @@ export async function branchCommand(opts: BranchOptions = {}): Promise<void> {
   // Decide how to handle uncommitted changes before touching the base branch.
   let stashed = false;
   let updateBase = true;
-  if (!isWorkingTreeClean()) {
-    if (nonInteractive) {
-      throw new GitwizError(t('You have uncommitted changes.'), {
-        hint: t('Commit or stash them first — create the branch before you start editing.'),
-      });
-    }
+  // Headless, uncommitted changes simply come along: an agent that edited first
+  // and branches second wants its edits on the new branch, not an error. Nothing
+  // is stashed — git only switches to the base when that overwrites nothing — so
+  // nothing can be left behind in a stash or half-applied with conflicts.
+  let carryHeadless = false;
+  if (!isWorkingTreeClean() && nonInteractive) {
+    carryHeadless = true;
+  } else if (!isWorkingTreeClean()) {
     const action = await select({
       message: t('You have uncommitted changes. What should we do with them?'),
       choices: [
@@ -142,8 +144,12 @@ export async function branchCommand(opts: BranchOptions = {}): Promise<void> {
           hint: t('Check your gitwiz config or run "gitwiz init".'),
         });
       }
-      runGit(['switch', base]);
-      if (hasRemote() && remoteBranchExists(base)) {
+      let switched = true;
+      if (carryHeadless) switched = tryRunGit(['switch', base]);
+      else runGit(['switch', base]);
+      if (!switched) {
+        log.warn(t('Your changes clash with {base}, so {branch} starts from your current commit instead.', { base, branch: target }));
+      } else if (hasRemote() && remoteBranchExists(base)) {
         if (!tryRunGit(['pull', '--ff-only', 'origin', base])) {
           log.warn(t('Could not fast-forward {base} (offline, or the branch has diverged).', { base }));
           if (!nonInteractive) {
@@ -167,6 +173,7 @@ export async function branchCommand(opts: BranchOptions = {}): Promise<void> {
   }
 
   popStash();
+  if (carryHeadless) log.dim(`  ${t('Your uncommitted changes came along to {branch}.', { branch: target })}`);
 
   let doPush = false;
   if (hasRemote()) {

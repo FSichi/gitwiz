@@ -12,6 +12,7 @@ import {
   type ProjectField,
 } from '../core/gh-project.js';
 import { pickProject, resolveOwner } from './gh-projects.js';
+import { readBodyFile } from '../core/body-file.js';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
 import { box, emitJson, isJsonMode, log } from '../ui/output.js';
@@ -23,6 +24,8 @@ export interface GhTaskOptions {
   repo?: string;
   title?: string;
   body?: string;
+  /** Read the body from this file ("-" = stdin). */
+  bodyFile?: string;
   json?: boolean;
 }
 
@@ -46,7 +49,8 @@ function parseProjectNumber(value: string): number {
   return number;
 }
 
-export async function ghTaskCommand(opts: GhTaskOptions = {}): Promise<void> {
+export async function ghTaskCommand(flags: GhTaskOptions = {}): Promise<void> {
+  const opts = flags.bodyFile ? { ...flags, body: readBodyFile(flags.bodyFile) } : flags;
   // --title is the switch to headless mode: from there on nothing may prompt,
   // because a prompt with no terminal behind it would hang an agent forever.
   const nonInteractive = Boolean(opts.title);

@@ -1,11 +1,31 @@
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { branchCommand } from '../../src/commands/branch.js';
 import { commitCommand } from '../../src/commands/commit.js';
+import { initCommand } from '../../src/commands/init.js';
 import { releaseFinishCommand } from '../../src/commands/release-finish.js';
 import { releaseStartCommand } from '../../src/commands/release-start.js';
+import { statusCommand } from '../../src/commands/status.js';
 import { captureGit, captureGitPaths, getCurrentBranch, tagExists } from '../../src/core/git.js';
+import { setJsonMode } from '../../src/ui/output.js';
 import { createTempRepo, type TempRepo } from './helpers/temp-repo.js';
+
+/** Run a command in --json mode and return what it printed to stdout. */
+async function captureStdout(run: () => Promise<void>): Promise<string> {
+  const lines: string[] = [];
+  const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+    lines.push(args.join(' '));
+  });
+  setJsonMode(true);
+  try {
+    await run();
+  } finally {
+    setJsonMode(false);
+    spy.mockRestore();
+  }
+  return lines.join('\n');
+}
 
 // The command functions operate on process.cwd(), so each test chdirs into a
 // temp repo and restores afterwards.
@@ -148,6 +168,69 @@ describe('non-interactive commands (agent-facing)', () => {
     await expect(releaseFinishCommand({ yes: true })).rejects.toThrow(/uncommitted changes/);
     expect(tagExists('v1.0.0')).toBe(false);
     expect(getCurrentBranch()).toBe('main');
+  });
+
+  it('commit takes a full conventional header in -m without --type', async () => {
+    repo().writeFile('a.txt', 'x');
+    await commitCommand({ message: 'feat(core): add a', all: true });
+    expect(captureGit(['log', '-1', '--format=%s'])).toBe('feat(core): add a');
+  });
+
+  // Agents learned to avoid --all so the user's own edits stay out of commits.
+  it('commit with files commits only those files', async () => {
+    const r = repo();
+    r.writeFile('mine.txt', 'agent work');
+    r.writeFile('theirs.txt', 'user work');
+    r.writeFile('README.md', '# changed by the user\n');
+    await commitCommand({ message: 'fix: only mine', paths: ['mine.txt'] });
+    expect(captureGitPaths(['show', '--name-only', '--format=', 'HEAD'])).toEqual(['mine.txt']);
+    const status = captureGit(['status', '--porcelain']);
+    expect(status).toContain('theirs.txt');
+    expect(status).toContain('README.md');
+  });
+
+  it('commit --body-file adds a multi-line body verbatim', async () => {
+    const r = repo();
+    r.writeFile('a.txt', 'x');
+    r.writeFile('../body.txt', 'Why: the `retry` loop never ended.\n\n- capped at "3" tries\n');
+    await commitCommand({ message: 'fix: cap retries', all: true, bodyFile: join(r.dir, '..', 'body.txt') });
+    expect(captureGit(['log', '-1', '--format=%b'])).toBe('Why: the `retry` loop never ended.\n\n- capped at "3" tries');
+  });
+
+  it('branch brings uncommitted changes along instead of refusing', async () => {
+    const r = repo();
+    r.writeFile('.gitwizrc.json', JSON.stringify({ mainBranch: 'main', developBranch: 'develop' }));
+    r.commit('chore: config');
+    r.git('branch', 'develop');
+    r.writeFile('README.md', '# edited before branching\n');
+    r.writeFile('new-file.ts', 'export {};\n');
+    await branchCommand({ type: 'feature', name: 'late branch' });
+    expect(getCurrentBranch()).toBe('feature/late-branch');
+    const status = captureGit(['status', '--porcelain']);
+    expect(status).toContain('README.md');
+    expect(status).toContain('new-file.ts');
+    expect(captureGit(['stash', 'list'])).toBe('');
+  });
+
+  it('status --json describes the repo as data', async () => {
+    const r = repo();
+    r.writeFile('notas de reunión.md', 'x');
+    const out = await captureStdout(() => statusCommand());
+    const status = JSON.parse(out);
+    expect(status).toMatchObject({ branch: 'main', detached: false, clean: false, operation: null });
+    expect(status.files.untracked).toEqual(['notas de reunión.md']);
+    expect(status.next[0]).toMatchObject({ action: expect.any(String), command: expect.stringMatching(/^git/) });
+    expect(status.next[0].reason).not.toMatch(/\x1b\[/);
+  });
+
+  it('init --agents writes AGENTS.md and makes CLAUDE.md import it', async () => {
+    const r = repo();
+    r.writeFile('CLAUDE.md', '# Project rules\n');
+    await initCommand({ agents: true });
+    expect(readFileSync(join(r.dir, 'AGENTS.md'), 'utf8')).toContain('<!-- gitwiz:start -->');
+    expect(readFileSync(join(r.dir, 'CLAUDE.md'), 'utf8').startsWith('@AGENTS.md\n')).toBe(true);
+    await initCommand({ agents: true }); // idempotent
+    expect(readFileSync(join(r.dir, 'CLAUDE.md'), 'utf8').match(/@AGENTS\.md/g)).toHaveLength(1);
   });
 
   it('release start --minor then finish --yes run fully headless', async () => {

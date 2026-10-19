@@ -9,7 +9,7 @@ import {
   type GitOptions,
 } from '../core/git.js';
 import { t } from '../ui/i18n.js';
-import { divider, heading, log, section } from '../ui/output.js';
+import { divider, emitJson, heading, isJsonMode, log, section } from '../ui/output.js';
 import { select } from '../ui/prompts.js';
 
 export interface StatusInfo {
@@ -211,6 +211,46 @@ async function runStatusHub(suggestions: Suggestion[]): Promise<void> {
   await dispatch(choice);
 }
 
+const SUGGESTED_COMMAND: Record<ActionKey, string> = {
+  commit: 'gitwiz commit',
+  branch: 'gitwiz branch',
+  sync: 'gitwiz sync',
+  push: 'git push',
+  'release-finish': 'gitwiz release finish',
+};
+
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
+
+/**
+ * `gitwiz status --json`: everything the screen shows, as data an agent can act
+ * on without scraping text. Exported for unit tests.
+ */
+export function buildStatusJson(
+  info: StatusInfo,
+  config: GitwizConfig,
+  operation: 'merge' | 'rebase' | null,
+  releaseBranch: string | null,
+) {
+  const { staged, unstaged, untracked, conflicted } = info;
+  return {
+    branch: info.branch,
+    detached: info.branch === null,
+    base: info.branch ? findBaseBranch(info.branch, config) : null,
+    upstream: info.upstream,
+    ahead: info.ahead,
+    behind: info.behind,
+    operation,
+    releaseBranch,
+    clean: staged.length + unstaged.length + untracked.length + conflicted.length === 0,
+    files: { staged, unstaged, untracked, conflicted },
+    next: buildSuggestions(info, config, operation, releaseBranch).map((tip) => ({
+      action: tip.action ?? null,
+      command: tip.action ? SUGGESTED_COMMAND[tip.action] : null,
+      reason: tip.text.replace(ANSI_RE, ''),
+    })),
+  };
+}
+
 // A forgotten .gitignore can leave thousands of untracked files; the counts
 // stay exact, but the screen should still fit the suggestions below them.
 const MAX_FILES_PER_GROUP = 25;
@@ -235,6 +275,11 @@ export async function statusCommand(opts: GitOptions = {}): Promise<void> {
     tryCaptureGit(['branch', '--list', 'release/*', '--format=%(refname:short)'], opts)
       ?.split('\n')
       .filter(Boolean)[0] ?? null;
+
+  if (isJsonMode()) {
+    emitJson(buildStatusJson(info, config, operation, releaseBranch));
+    return;
+  }
 
   log.blank();
   if (info.branch === null) {

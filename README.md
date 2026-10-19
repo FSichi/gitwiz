@@ -35,7 +35,7 @@ Run `gitwiz` on its own (in a terminal) to open an interactive menu listing ever
 | Command | What it does |
 |---|---|
 | `gitwiz status` | Where am I and what should I do next? Human-friendly status with suggested next steps. |
-| `gitwiz init` | One-time setup: pick your production/work branches and tag prefix. |
+| `gitwiz init` | One-time setup: pick your production/work branches and tag prefix, and write the AI-agent instructions (`--agents` refreshes only those). |
 | `gitwiz branch` | Start a feature/bugfix/hotfix/refactor branch the right way (updates the base first). |
 | `gitwiz commit` | Guided [conventional commit](https://www.conventionalcommits.org): stage files (all at once or pick individually), type, scope, description. |
 | `gitwiz sync` | Safely bring the latest changes into your branch (guided merge/rebase, auto-stash). |
@@ -48,15 +48,17 @@ Run `gitwiz` on its own (in a terminal) to open an interactive menu listing ever
 
 ### `gitwiz status`
 
-The only non-interactive command (safe in scripts/CI). Shows your branch, how far ahead/behind you are, your files grouped by state, and up to 3 suggested next steps.
+Read-only and safe anytime. Shows your branch, how far ahead/behind you are, your files grouped by state, and up to 3 suggested next steps — in a terminal you can launch one right there. `--json` returns the same as data (branch, base, upstream, ahead/behind, operation in progress, open release, files, next steps).
 
 ### `gitwiz branch`
 
-Asks what kind of work you're starting (feature, bugfix, hotfix, refactor, chore, docs), normalizes the name you type, pulls the latest base branch, creates `feature/<name>` and optionally pushes it. Hotfixes branch off your production branch; everything else off your work branch. Uncommitted changes? It offers to stash and bring them along.
+Asks what kind of work you're starting (feature, bugfix, hotfix, refactor, chore, docs), normalizes the name you type, pulls the latest base branch, creates `feature/<name>` and optionally pushes it. Hotfixes branch off your production branch; everything else off your work branch. Uncommitted changes? It offers to stash and bring them along — and without a terminal it simply brings them (git only switches to the base when that overwrites nothing; otherwise the branch starts from your current commit).
 
 ### `gitwiz commit`
 
 If nothing is staged it detects your uncommitted changes and lets you choose: **stage everything** and commit, or **pick specific files** from a checkbox list. Then walks you through type → scope → description → breaking change, previews the message, and commits. Messages follow [Conventional Commits](https://www.conventionalcommits.org), which is what powers the automatic changelog.
+
+Name files after the flags (`gitwiz commit -m "fix: x" -- src/a.ts src/b.ts`) to commit exactly those and leave everything else as it is. `--body` / `--body-file` add the longer explanation. If a commit hook (commitlint, lint-staged) rejects the commit, nothing is committed and your changes stay where they were.
 
 ### `gitwiz sync`
 
@@ -76,7 +78,7 @@ Checks for the latest version of gitwiz and updates it — or tells you you're a
 
 ### `gitwiz release`
 
-`release start` checks nothing else is mid-release, updates your work branch, creates `release/<version>`, bumps `package.json` (and `package-lock.json`), and generates the changelog section from your conventional commits since the last tag — with compare/commit links when your remote is GitHub or GitLab. It also **suggests the bump** from those commits (any breaking change → major, any `feat` → minor, otherwise patch). Review it, then `release finish` merges it back (`--no-ff`), tags `v<version>`, pushes, and deletes the release branch.
+`release start` checks nothing else is mid-release, updates your work branch, creates `release/<version>`, bumps `package.json` (and `package-lock.json`), and generates the changelog section from your conventional commits since the last tag — with compare/commit links when your remote is GitHub or GitLab. It also **suggests the bump** from those commits (any breaking change → major, any `feat` → minor, otherwise patch). Review it, then `release finish` merges it back (`--no-ff`), tags `v<version>`, pushes, and deletes the release branch. `release finish --dry-run` lists those steps for your setup without running any.
 
 Not an npm project? No problem — without a `package.json` (or with one that has no `"version"`, like a private app or a monorepo root) the current version is read from the latest release tag, so Python/Go/.NET repos can release too (the tag carries the version). Tags are compared as semver, so `v1.3.0` correctly counts as newer than `v1.3.0-rc.1`.
 
@@ -92,7 +94,7 @@ Everything that lives on GitHub rather than in git sits under its own `gh` names
 
 | Command | What it does |
 |---|---|
-| `gitwiz gh pr` | Open a pull request for the current branch: pushes it if needed, suggests the title from your commits, and builds the description from them. |
+| `gitwiz gh pr` | Open a pull request for the current branch (or `--head` another): pushes it if needed, suggests the title from your commits, and builds the description from them. |
 | `gitwiz gh review` | Review a pull request: pick one, see its size, files and checks, read the diff or check it out to run it, then approve, request changes or comment. |
 | `gitwiz gh task` | Create an issue and put it on a project board — asking for **every** field the board defines, so no card lands half-filled. |
 | `gitwiz gh projects` | List the boards of an account and see how many items sit in each column. |
@@ -349,33 +351,45 @@ gitwiz plays well with AI coding assistants (Claude Code, Cursor, Copilot, …) 
 
 `gitwiz init` offers to write an **`AGENTS.md`** with a managed block describing this repo's branch model, commit conventions, and the exact commands to run — generated from your config, so it always matches your real setup. Re-running `init` updates just that block (between `<!-- gitwiz:start -->` / `<!-- gitwiz:end -->`) without touching the rest of the file.
 
-### 2. Non-interactive commands
+**Claude Code** reads `AGENTS.md` only when the repo has no `CLAUDE.md`; with one, it reads `CLAUDE.md` alone. So when a `CLAUDE.md` exists, `init` also offers to put `@AGENTS.md` at its top — the import Claude Code documents for exactly this.
 
-The wizards are for humans, but every workflow command also takes flags so an agent (or CI) can run it **without prompts** — a bare command in a non-TTY context fails fast instead of hanging:
+After updating gitwiz, refresh the block without any prompts:
 
 ```bash
-gitwiz branch --type feature --name add-login      # add --push to publish it
-gitwiz commit --type feat --scope auth -m "add login form"
-gitwiz commit --type fix -m "handle null user" --all          # --all stages everything
-gitwiz commit --type feat -m "new api" --breaking "v1 removed"
-gitwiz release start --minor                        # or --patch / --major / --version 1.4.0
-gitwiz release finish --yes
-gitwiz status                                       # read-only, always safe
+gitwiz init --agents
 ```
 
-`gitwiz commit` runs non-interactively as soon as `--type` and `-m` are given; `gitwiz branch` when `--type` and `--name` are given. Pass only one of the pair without a terminal and the error names the flag that is missing. In a terminal, any flag you pass simply answers its own question in the wizard.
+### 2. Non-interactive commands
 
-The GitHub commands work the same way, and the read-only ones add `--json` so an agent gets a parseable payload instead of prose:
+The wizards are for humans, but every workflow command also takes flags so an agent (or CI) can run it **without prompts**. A command missing a flag it needs fails at once with an error that names it — nothing ever waits for input:
 
 ```bash
-gitwiz gh pr --title "feat(auth): add login" --base develop
+gitwiz status --json                                 # where things stand, as data
+gitwiz branch --type feature --name add-login        # uncommitted changes come along; --push publishes it
+gitwiz commit -m "feat(auth): add login form" -- src/auth/login.ts   # only these files
+gitwiz commit --type fix -m "handle null user" --all                 # --all stages everything
+gitwiz commit -m "feat!: new api" --breaking "v1 removed" --body-file why.md
+gitwiz release start --minor                         # or --patch / --major / --version 1.4.0
+gitwiz release finish --dry-run                      # what it would do
+gitwiz release finish --yes
+```
+
+`gitwiz commit` runs non-interactively once it has a type and a description: `--type` plus `-m`, or a full `-m "type(scope): description"` (it is never prefixed twice). Extra lines in `-m`, `--body` and `--body-file` (`-` reads stdin) make the body — a file sidesteps shell quoting. `gitwiz branch` runs non-interactively with `--type` and `--name`. Without a terminal, passing only part of a pair names the missing flag; in a terminal, any flag you pass simply answers its own question in the wizard.
+
+The GitHub commands work the same way, and `--json` gives an agent a parseable payload instead of prose:
+
+```bash
+gitwiz gh pr --title "feat(auth): add login" --body-file pr.md --json
+gitwiz gh pr --head develop --base main --title "release: 1.5.0"   # from another branch
 gitwiz gh review --pr 42 --approve
-gitwiz gh task --owner my-org --project 29 --title "Fix the login redirect"
+gitwiz gh task --owner my-org --project 29 --title "Fix the login redirect" --json
 gitwiz gh projects --owner my-org --json
 gitwiz gh repos --owner my-org --json
 ```
 
-With `--json`, stdout carries only the payload: warnings move to stderr and the echoed commands are silenced, so nothing can corrupt what the caller parses.
+`gh pr` pushes the branch before opening the pull request, and running it again on a branch whose PR is open pushes the new commits instead of failing.
+
+With `--json`, stdout carries only the payload — a failure too, as `{"error": "…", "hint": "…"}` — while warnings go to stderr and the echoed commands are silenced, so nothing can corrupt what the caller parses. Without a terminal, output is plain text (no color codes), so an agent reads words, not escape sequences.
 
 `gh review` verdicts: `--approve` (optionally with `--comment`), `--request-changes --comment "what to change"` (GitHub requires the comment), or `--comment` alone. A verdict combined with `--json` is still submitted, and the payload reports it in `submitted`. Without a terminal, `gh task` never prompts: if the account has several boards it asks for `--project`, and outside a GitHub repository for `--repo`.
 
