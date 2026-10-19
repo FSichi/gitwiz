@@ -1,7 +1,8 @@
 // The whole CLI. Loaded by cli.ts once Node's compile cache is switched on.
 import { Command } from 'commander';
+import pc from 'picocolors';
 import { branchCommand } from './commands/branch.js';
-import { commitCommand } from './commands/commit.js';
+import { commitCommand, type CommitOptions } from './commands/commit.js';
 import { ghOrgsCommand } from './commands/gh-orgs.js';
 import { ghPrCommand } from './commands/gh-pr.js';
 import { ghProjectsCommand } from './commands/gh-projects.js';
@@ -21,7 +22,7 @@ import { checkForUpdates } from './core/update-checker.js';
 import { PACKAGE as pkg } from './package-info.js';
 import { GitwizError } from './ui/errors.js';
 import { t } from './ui/i18n.js';
-import { log, setJsonMode, setVerbose } from './ui/output.js';
+import { emitJson, isJsonMode, log, setJsonMode, setVerbose } from './ui/output.js';
 
 checkForUpdates(pkg);
 
@@ -32,8 +33,13 @@ program
   .description(t('Friendly git workflows — wizards for branching, commits, releases, sync, and undo'))
   .version(pkg.version)
   .option('--verbose', t('also echo the read-only git commands gitwiz runs'))
+  // Root options only before the command name. Parsed anywhere (commander's
+  // default), the root --version swallowed `release start --version 1.2.3`:
+  // it printed gitwiz's own version and exited 0 without starting anything.
+  .enablePositionalOptions()
   .hook('preAction', (thisCommand, actionCommand) => {
-    setVerbose(Boolean(thisCommand.opts().verbose));
+    // --verbose is accepted before the command and after it (see the end of file).
+    setVerbose(Boolean(thisCommand.opts().verbose || actionCommand.opts().verbose));
     // --json lives on the subcommands that support it, so read it from the one
     // actually running. It silences every human-facing line: with it on, stdout
     // is the caller's to parse.
@@ -44,6 +50,7 @@ program
 program
   .command('init')
   .description(t('Set up gitwiz in this repository (branches, tag prefix)'))
+  .option('--agents', t('only write/refresh the AI-agent instructions (AGENTS.md), without prompts'))
   .action(initCommand);
 
 program
@@ -59,15 +66,19 @@ program
   .description(t('Create a well-formed commit with a guided wizard'))
   .option('-t, --type <type>', t('commit type (feat, fix, …) — runs without prompts when used with -m'))
   .option('-s, --scope <scope>', t('commit scope'))
-  .option('-m, --message <description>', t('commit description'))
+  .argument('[files...]', t('commit only these files (others stay as they are)'))
+  .option('-m, --message <description>', t('commit description (a full "type(scope): description" also works)'))
+  .option('-B, --body <text>', t('commit body: the why, details, footers'))
+  .option('-F, --body-file <file>', t('read the commit body from a file ("-" for stdin)'))
   .option('--breaking [description]', t('mark as a breaking change (optionally with a migration note)'))
   .option('-a, --all', t('stage all changes before committing'))
   .option('--allow-protected', t('allow committing directly to a protected branch'))
-  .action(commitCommand);
+  .action((files: string[], opts: CommitOptions) => commitCommand({ ...opts, paths: files }));
 
 program
   .command('status')
   .description(t('Where am I and what should I do next?'))
+  .option('--json', t('print machine-readable output (for agents and scripts)'))
   .action(() => statusCommand());
 
 program
@@ -106,9 +117,12 @@ const gh = program
 gh.command('pr')
   .description(t('Open a pull request for the current branch'))
   .option('-b, --base <branch>', t('branch to merge into'))
+  .option('-H, --head <branch>', t('branch to open it from (default: the current one)'))
   .option('-t, --title <title>', t('pull request title — runs without prompts when set'))
   .option('-B, --body <body>', t('pull request description'))
+  .option('-F, --body-file <file>', t('read the description from a file ("-" for stdin)'))
   .option('--draft', t('open as a draft'))
+  .option('--json', t('print machine-readable output (for agents and scripts)'))
   .action(ghPrCommand);
 
 gh.command('review')
@@ -127,6 +141,7 @@ gh.command('task')
   .option('-r, --repo <owner/repo>', t('repository the issue belongs to'))
   .option('-t, --title <title>', t('task title — runs without prompts when set'))
   .option('-B, --body <body>', t('task description'))
+  .option('-F, --body-file <file>', t('read the description from a file ("-" for stdin)'))
   .option('--json', t('print machine-readable output (for agents and scripts)'))
   .action(ghTaskCommand);
 
@@ -165,7 +180,15 @@ release
   .command('finish')
   .description(t('Finish the open release: merge, tag, push and clean up'))
   .option('-y, --yes', t('skip the confirmation prompt (for automation)'))
+  .option('--dry-run', t('list the steps it would run, change nothing'))
   .action(releaseFinishCommand);
+
+// With positional root options, `gitwiz commit --verbose` would no longer reach
+// the root; declaring --verbose on every command keeps both spellings working.
+const withSubcommands = (cmd: Command): Command[] => [cmd, ...cmd.commands.flatMap(withSubcommands)];
+for (const cmd of program.commands.flatMap(withSubcommands)) {
+  cmd.option('--verbose', t('also echo the read-only git commands gitwiz runs'));
+}
 
 // No subcommand: launch the interactive menu in a terminal, or show help otherwise.
 program.action(async () => {
@@ -184,8 +207,11 @@ try {
     process.exit(130);
   }
   if (err instanceof GitwizError) {
+    // A --json caller parses stdout, so the failure goes there too — never empty.
+    if (isJsonMode()) emitJson({ error: err.message, hint: err.hint ?? null });
+    // The hint travels with the error on stderr, so stdout stays clean data.
     log.error(err.message);
-    if (err.hint) log.dim(`  ${err.hint}`);
+    if (err.hint) console.error(pc.dim(`  ${err.hint}`));
     process.exit(1);
   }
   throw err;
