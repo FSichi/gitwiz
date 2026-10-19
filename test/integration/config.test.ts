@@ -62,6 +62,16 @@ describe('loadConfig', () => {
     expect(config.release.changelogFile).toBe('CHANGELOG.md');
   });
 
+  it('follows origin/HEAD for the main branch, even when it exists only on origin', () => {
+    const r = repo();
+    r.git('update-ref', 'refs/remotes/origin/trunk', 'HEAD');
+    r.git('symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/trunk');
+    r.git('update-ref', 'refs/remotes/origin/dev', 'HEAD');
+    const { config } = loadConfig({ cwd: r.dir });
+    expect(config.mainBranch).toBe('trunk');
+    expect(config.developBranch).toBe('dev');
+  });
+
   it('merges commitTypes over the defaults instead of replacing them', () => {
     const r = repo();
     r.writeFile(
