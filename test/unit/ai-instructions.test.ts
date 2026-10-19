@@ -72,6 +72,14 @@ describe('buildAgentInstructions', () => {
     expect(block).not.toContain('Co-Authored-By');
   });
 
+  // cmd.exe reports the NVM shim failure in the system language.
+  it('names the Windows shim error in English and Spanish, with the fallback', () => {
+    const block = buildAgentInstructions(config());
+    expect(block).toContain('"C:\\…\\Author" is not recognized');
+    expect(block).toContain('"C:\\…\\Author" no se reconoce');
+    expect(block).toContain('node "$(npm root -g)/@fsichi/gitwiz/dist/cli.js" <args>');
+  });
+
   it('names the branches a release is merged into', () => {
     expect(buildAgentInstructions(config())).toContain('merges the release into `develop`, tags');
     const both = buildAgentInstructions(config({ release: { alsoMergeToMain: true, changelogFile: 'CHANGELOG.md' } }));

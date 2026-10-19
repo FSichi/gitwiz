@@ -403,17 +403,23 @@ This happens **before gitwiz starts**, and only when an argument contains a spac
 
 Until the shim is fixed upstream, any of these works:
 
-- Call gitwiz through Node directly, e.g. with a shell function (Git Bash / WSL — `~/.bashrc`):
+- Git Bash / WSL: call gitwiz through Node with a shell function in `~/.bashrc`. New Claude Code sessions pick it up too, since their Bash tool loads `~/.bashrc` when it starts:
 
   ```bash
   gitwiz() { node "$(npm root -g)/@fsichi/gitwiz/dist/cli.js" "$@"; }
   ```
 
-- In PowerShell (`$PROFILE`):
+- PowerShell and `cmd`: save this as `gitwiz.cmd` in the NVM folder itself (`%NVM_HOME%`, by default `%LOCALAPPDATA%\Author Software\nvm`). NVM puts that folder before `.nodejs` in `PATH`, so the wrapper wins over the broken shim. npm's own `.cmd` wrappers handle spaces fine; only the shim breaks them. Reinstalling NVM may remove the file.
 
-  ```powershell
-  function gitwiz { node "$(npm root -g)\@fsichi\gitwiz\dist\cli.js" @args }
+  ```bat
+  @echo off
+  setlocal
+  for /f "delims=" %%r in ('npm root -g') do set "GITWIZ_CLI=%%r\@fsichi\gitwiz\dist\cli.js"
+  node "%GITWIZ_CLI%" %*
+  exit /b %ERRORLEVEL%
   ```
+
+  Prefer it to a function in `$PROFILE`. Claude Code's PowerShell tool starts with `-NoProfile`, so a profile function never reaches agents. And under Windows' default execution policy (`Restricted`), PowerShell does not load the profile at all.
 
 - Avoid spaces in arguments (`-m add-login`), which keeps the shim's command line unquoted.
 
