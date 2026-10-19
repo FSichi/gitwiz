@@ -2,25 +2,31 @@ import pc from 'picocolors';
 import { baseBranchFor, loadConfig } from '../core/config.js';
 import { captureGh, captureGhJson, ensureRepoSlug } from '../core/gh.js';
 import {
-  captureGit,
   ensureGitRepo,
   getCurrentBranch,
-  getUpstream,
   hasRemote,
   isWorkingTreeClean,
+  localBranchExists,
+  remoteBranchExists,
   runGit,
   tryCaptureGit,
 } from '../core/git.js';
+import { readBodyFile } from '../core/body-file.js';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
-import { box, log } from '../ui/output.js';
+import { box, emitJson, isJsonMode, log } from '../ui/output.js';
 import { assertInteractive, confirm, input, select } from '../ui/prompts.js';
 
 export interface GhPrOptions {
   base?: string;
   title?: string;
   body?: string;
+  /** Read the body from this file ("-" = stdin). */
+  bodyFile?: string;
+  /** Open the PR from this branch instead of the current one. */
+  head?: string;
   draft?: boolean;
+  json?: boolean;
 }
 
 interface ExistingPr {
@@ -48,11 +54,15 @@ export function buildPrBody(commits: string[]): string {
   return `## ${t('Changes')}\n\n${bullets}\n`;
 }
 
-export async function ghPrCommand(opts: GhPrOptions = {}): Promise<void> {
+export async function ghPrCommand(flags: GhPrOptions = {}): Promise<void> {
   ensureGitRepo();
+  const opts = flags.bodyFile ? { ...flags, body: readBodyFile(flags.bodyFile) } : flags;
   const { config } = loadConfig();
   const slug = ensureRepoSlug();
-  const branch = getCurrentBranch();
+  const current = getCurrentBranch();
+  // --head opens the PR from another branch without checking it out — the
+  // develop → main and release → main PRs agents used to open with raw gh.
+  const branch = opts.head ?? current;
   const nonInteractive = Boolean(opts.title);
 
   if (branch === '') {
@@ -60,14 +70,36 @@ export async function ghPrCommand(opts: GhPrOptions = {}): Promise<void> {
       hint: t('Switch to the branch you want to open a pull request from.'),
     });
   }
-  if (branch === config.mainBranch || branch === config.developBranch) {
-    throw new GitwizError(t('You are on "{branch}", which is a base branch.', { branch }), {
-      hint: t('Pull requests are opened from a work branch. Create one with "gitwiz branch".'),
+  if ((branch === config.mainBranch || branch === config.developBranch) && !opts.base) {
+    throw new GitwizError(t('"{branch}" is a base branch.', { branch }), {
+      hint: t('Work goes through a work branch ("gitwiz branch"). To open a PR from it on purpose, pass --base (e.g. --head {develop} --base {main}).', {
+        develop: config.developBranch,
+        main: config.mainBranch,
+      }),
     });
   }
   if (!hasRemote()) {
     throw new GitwizError(t('This repository has no remote named "origin".'));
   }
+  if (!localBranchExists(branch) && !remoteBranchExists(branch)) {
+    throw new GitwizError(t('Branch "{branch}" does not exist locally or on origin.', { branch }));
+  }
+
+  /** Send local commits origin lacks (publishing the branch if it is new); returns how many. */
+  const pushBranch = (): number => {
+    if (!localBranchExists(branch)) return 0;
+    if (!remoteBranchExists(branch)) {
+      log.step(t('Pushing "{branch}" to origin...', { branch }));
+      runGit(['push', '-u', 'origin', branch]);
+      return 0;
+    }
+    const ahead = Number(tryCaptureGit(['rev-list', '--count', `origin/${branch}..${branch}`]) ?? '0');
+    if (ahead > 0) {
+      log.step(t('Pushing {count} new commit(s)...', { count: ahead }));
+      runGit(['push', 'origin', branch]);
+    }
+    return ahead;
+  };
 
   // A branch can only have one open PR. Finding it early turns a confusing gh
   // error into a useful answer: here is your PR, push your fixes to update it.
@@ -77,13 +109,20 @@ export async function ghPrCommand(opts: GhPrOptions = {}): Promise<void> {
   ]);
   if (existing.length > 0) {
     const pr = existing[0]!;
+    // Re-running after more commits is how an agent "updates" its PR: send them.
+    const pushed = pushBranch();
+    if (isJsonMode()) {
+      emitJson({ created: false, number: pr.number, url: pr.url, title: pr.title, pushedCommits: pushed });
+      return;
+    }
     log.info(t('This branch already has an open pull request:'));
     box([`#${pr.number} ${pr.title}`, pc.dim(pr.url)]);
-    log.dim(t('Push new commits to this branch and the pull request updates itself.'));
+    if (pushed > 0) log.success(t('Pushed {count} new commit(s) — the pull request is up to date.', { count: pushed }));
+    else log.dim(t('Push new commits to this branch and the pull request updates itself.'));
     return;
   }
 
-  if (!isWorkingTreeClean()) {
+  if (branch === current && !isWorkingTreeClean()) {
     log.warn(t('You have uncommitted changes — they will not be part of this pull request.'));
     if (!nonInteractive) {
       assertInteractive();
@@ -122,27 +161,17 @@ export async function ghPrCommand(opts: GhPrOptions = {}): Promise<void> {
     throw new GitwizError(t('A pull request cannot merge "{branch}" into itself.', { branch }));
   }
 
-  // Push the branch if the remote does not have it yet — gh cannot open a PR
-  // for a branch GitHub has never seen.
-  if (getUpstream() === null) {
-    log.step(t('Pushing "{branch}" to origin...', { branch }));
-    runGit(['push', '-u', 'origin', branch]);
-  } else {
-    const ahead = tryCaptureGit(['rev-list', '--count', '@{u}..HEAD']);
-    if (ahead && ahead !== '0') {
-      log.step(t('Pushing {count} new commit(s)...', { count: ahead }));
-      runGit(['push']);
-    }
-  }
+  // gh cannot open a PR for commits GitHub has never seen.
+  pushBranch();
 
   const commits = collectCommits(base, branch);
 
   // Title: the flag, else the single commit's subject (the common case for a
-  // small branch), else the branch name humanized as a starting point.
+  // small branch), else the branch's latest subject as a starting point.
   const suggestedTitle =
     commits.length === 1
       ? commits[0]!
-      : captureGit(['log', '-1', '--format=%s']);
+      : (tryCaptureGit(['log', '-1', '--format=%s', localBranchExists(branch) ? branch : `origin/${branch}`]) ?? '');
 
   let title: string;
   let body: string;
@@ -198,6 +227,11 @@ export async function ghPrCommand(opts: GhPrOptions = {}): Promise<void> {
   if (draft) args.push('--draft');
 
   const url = captureGh(args, { echo: true });
+  if (isJsonMode()) {
+    const number = Number(url.match(/\/pull\/(\d+)/)?.[1] ?? NaN);
+    emitJson({ created: true, number: Number.isNaN(number) ? null : number, url, title, base, head: branch, draft });
+    return;
+  }
   log.success(t('Pull request created.'));
   log.info(pc.cyan(url));
 }
