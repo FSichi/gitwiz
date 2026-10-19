@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.1](https://github.com/FSichi/gitwiz/compare/v1.5.0...v1.5.1) (2026-10-19)
+
+### Bug Fixes
+
+* **update:** suggest nvm reshim when NVM for Windows blocks gitwiz ([497a835](https://github.com/FSichi/gitwiz/commit/497a835884118beba6fa1d1397e078148fb35d2b))
+* **agents:** name the Spanish NVM shim error in the agent block ([c19b189](https://github.com/FSichi/gitwiz/commit/c19b189044400c87c701e685d2f88f10168aa094))
+
 ## [1.5.0](https://github.com/FSichi/gitwiz/compare/v1.4.1...v1.5.0) (2026-10-19)
 
 ### Features
