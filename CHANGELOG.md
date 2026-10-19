@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0](https://github.com/FSichi/gitwiz/compare/v1.4.1...v1.5.0) (2026-10-19)
+
+### Features
+
+* **agents:** get AGENTS.md read by Claude Code and refresh it headless ([a4b8348](https://github.com/FSichi/gitwiz/commit/a4b8348dcb15297d9e92155d0b0872ef98796c19))
+* **gh:** open PRs from any branch and read bodies from files ([728c78e](https://github.com/FSichi/gitwiz/commit/728c78e040aa260fa9a306ed7ee4410970276081))
+* **status:** add --json output ([c985905](https://github.com/FSichi/gitwiz/commit/c985905cb68c315af2606f51a9bf9d2c9ec0a9a8))
+* **branch:** bring uncommitted changes along when run headless ([0215078](https://github.com/FSichi/gitwiz/commit/02150785752b1a4f477983fe74e2a6cec02337ea))
+* **commit:** take full headers, bodies and a list of files ([ab0e341](https://github.com/FSichi/gitwiz/commit/ab0e3416ceee0eb8fcda09708eae810eb221801a))
+
+### Bug Fixes
+
+* **output:** show only the first line of multi-line arguments in echoes ([6685fe3](https://github.com/FSichi/gitwiz/commit/6685fe3232cae1b0274e43b53ea93202b13e1ac8))
+* **cli:** honor release start --version, plain output and JSON errors ([59847b4](https://github.com/FSichi/gitwiz/commit/59847b40c35fd4b3aa2c38b07ee2b6bc8fc906b5))
+* **release:** skip a finish commit that stages nothing, add --dry-run ([8f85e3f](https://github.com/FSichi/gitwiz/commit/8f85e3f0614061d8a9d7c9a968e740ecfb1e14df))
+
 ## [1.4.1](https://github.com/FSichi/gitwiz/compare/v1.4.0...v1.4.1) (2026-10-19)
 
 ### Bug Fixes
