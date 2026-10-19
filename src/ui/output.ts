@@ -67,17 +67,21 @@ export const log = {
 };
 
 // ── Styled elements ──────────────────────────────────────────────────────────
+// Like the log helpers, all of these go silent in --json mode.
 
 export function heading(text: string): void {
+  if (jsonMode) return;
   console.log(pc.bold(pc.cyan(text)));
 }
 
 export function divider(): void {
+  if (jsonMode) return;
   console.log(pc.dim('─'.repeat(50)));
 }
 
 /** Print a styled section header. */
 export function section(title: string): void {
+  if (jsonMode) return;
   console.log(`\n${pc.bold(pc.white(`  ${title}`))}`);
 }
 
@@ -101,9 +105,11 @@ const FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '
 
 /**
  * Run an async function while showing a spinner.
- * Clears the spinner line when done and returns the result.
+ * Clears the spinner line when done and returns the result. Without a terminal
+ * it just runs: frames and line-clearing codes would only pollute a log.
  */
 export async function spin<T>(message: string, fn: () => Promise<T>): Promise<T> {
+  if (!process.stdout.isTTY || jsonMode) return fn();
   let i = 0;
   let result: T;
   let error: unknown;
@@ -114,32 +120,6 @@ export async function spin<T>(message: string, fn: () => Promise<T>): Promise<T>
 
   try {
     result = await fn();
-  } catch (err) {
-    error = err;
-  } finally {
-    clearInterval(timer);
-    process.stdout.write('\r\x1b[K');
-  }
-
-  if (error) throw error;
-  return result!;
-}
-
-/**
- * Run a synchronous function while showing a spinner.
- * Useful for blocking operations like spawnSync.
- */
-export function spinSync<T>(message: string, fn: () => T): T {
-  let i = 0;
-  let result: T;
-  let error: unknown;
-
-  const timer = setInterval(() => {
-    process.stdout.write(`\r  ${pc.cyan(FRAMES[i++ % FRAMES.length])} ${message}`);
-  }, 80);
-
-  try {
-    result = fn();
   } catch (err) {
     error = err;
   } finally {
@@ -175,5 +155,6 @@ export function echoGitCommand(args: string[]): void {
  * Optional `title` renders a label in the top border.
  */
 export function box(lines: string[], title?: string): void {
+  if (jsonMode) return;
   clackNote(lines.join('\n'), title);
 }

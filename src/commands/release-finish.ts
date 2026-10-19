@@ -16,7 +16,7 @@ import {
 } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
-import { log, spinSync } from '../ui/output.js';
+import { log } from '../ui/output.js';
 import { assertInteractive, confirm, select } from '../ui/prompts.js';
 
 function mergeConflictError(target: string): GitwizError {
@@ -153,6 +153,8 @@ export function performReleaseFinish(
 
 export interface ReleaseFinishOptions {
   yes?: boolean;
+  /** List the steps without running any of them. */
+  dryRun?: boolean;
 }
 
 export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Promise<void> {
@@ -171,7 +173,9 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
       .filter(Boolean)
       .map((line) => line.split('\t')[1]?.replace('refs/heads/', '') ?? '')
       .filter(Boolean);
-    if (remoteReleases.length > 0) {
+    if (remoteReleases.length > 0 && opts.dryRun) {
+      releases = [remoteReleases[0]!];
+    } else if (remoteReleases.length > 0) {
       if (!auto) {
         assertInteractive();
         const get = await confirm({
@@ -185,7 +189,7 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
           return;
         }
       }
-      spinSync(t('Fetching from origin...'), () => runGit(['fetch', 'origin']));
+      runGit(['fetch', 'origin']);
       runGit(['switch', remoteReleases[0]!]);
       releases = [remoteReleases[0]!];
     }
@@ -220,8 +224,22 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
     });
   }
 
+  const onReleaseBranch = getCurrentBranch() === branch;
+
+  // Agents used to read the bundled code to learn what finish does; say it.
+  if (opts.dryRun) {
+    const steps = releaseFinishStepDefs(config, version, {}).map((step) => step.title);
+    if (onReleaseBranch && !isWorkingTreeClean()) {
+      steps.unshift(t('Commit the uncommitted changes on {branch}', { branch }));
+    }
+    log.info(t('gitwiz release finish would:'));
+    steps.forEach((title, i) => log.info(`  ${i + 1}. ${title}`));
+    log.dim(t('Nothing was changed (--dry-run).'));
+    return;
+  }
+
   // Stray changes on the release branch must be dealt with explicitly.
-  if (getCurrentBranch() === branch && !isWorkingTreeClean()) {
+  if (onReleaseBranch && !isWorkingTreeClean()) {
     log.warn(t('There are uncommitted changes on the release branch:'));
     for (const line of captureGit(['status', '--short']).split('\n').filter(Boolean)) {
       log.dim(`  ${line}`);
@@ -238,7 +256,13 @@ export async function releaseFinishCommand(opts: ReleaseFinishOptions = {}): Pro
       }
     }
     runGit(['add', '-A']);
-    runGit(['commit', '-m', `chore(release): ${tag} updates`]);
+    // Regenerated files and line-ending noise can look modified yet stage
+    // nothing; committing would then fail and stop the release before it began.
+    if (tryCaptureGit(['diff', '--cached', '--quiet']) === null) {
+      runGit(['commit', '-m', `chore(release): ${tag} updates`]);
+    } else {
+      log.dim(t('Those changes were only line endings or regenerated files — nothing to commit.'));
+    }
   } else if (!isWorkingTreeClean()) {
     // Finishing switches branches and merges; carrying unrelated edits through
     // that can stop it halfway, after some steps already ran.
