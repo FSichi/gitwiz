@@ -31,6 +31,24 @@ export function bumpPreviews(current: string): BumpPreviews {
   };
 }
 
+function readPackageJson(pkgPath: string): { version?: unknown } {
+  try {
+    return JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: unknown };
+  } catch (err) {
+    throw new GitwizError(`Could not parse package.json: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * True when the root package.json carries a "version" — the one gitwiz bumps.
+ * An app or monorepo root without it releases like a non-npm project: the
+ * version lives in the tags.
+ */
+export function hasPackageVersion(repoRoot: string): boolean {
+  const pkgPath = join(repoRoot, 'package.json');
+  return existsSync(pkgPath) && readPackageJson(pkgPath).version !== undefined;
+}
+
 export function readPackageVersion(repoRoot: string): string {
   const pkgPath = join(repoRoot, 'package.json');
   if (!existsSync(pkgPath)) {
@@ -38,11 +56,11 @@ export function readPackageVersion(repoRoot: string): string {
       hint: 'gitwiz release currently requires an npm project (version lives in package.json).',
     });
   }
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: string };
-  if (!pkg.version || !semver.valid(pkg.version)) {
-    throw new GitwizError(`package.json has a missing or invalid "version" (${pkg.version ?? 'none'}).`);
+  const { version } = readPackageJson(pkgPath);
+  if (typeof version !== 'string' || !semver.valid(version)) {
+    throw new GitwizError(`package.json has a missing or invalid "version" (${String(version ?? 'none')}).`);
   }
-  return pkg.version;
+  return version;
 }
 
 /**

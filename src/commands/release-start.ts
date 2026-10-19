@@ -18,7 +18,14 @@ import {
   tryCaptureGit,
   type GitOptions,
 } from '../core/git.js';
-import { applyVersion, bumpPreviews, readPackageVersion, suggestBump, type BumpKind } from '../core/version.js';
+import {
+  applyVersion,
+  bumpPreviews,
+  hasPackageVersion,
+  readPackageVersion,
+  suggestBump,
+  type BumpKind,
+} from '../core/version.js';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
 import { log, spinSync } from '../ui/output.js';
@@ -66,7 +73,7 @@ export function getCurrentProjectVersion(
   config: GitwizConfig,
   opts: GitOptions = {},
 ): string {
-  if (existsSync(join(repoRoot, 'package.json'))) {
+  if (hasPackageVersion(repoRoot)) {
     return readPackageVersion(repoRoot);
   }
   const lastTag = findLastTag(config.tagPrefix, opts);
@@ -102,10 +109,9 @@ export function performReleaseStart(
   }
   runGit(['switch', '-c', branch], opts);
 
-  // Non-npm projects have no manifest to bump — the tag carries the version.
-  const changedFiles = existsSync(join(repoRoot, 'package.json'))
-    ? applyVersion(repoRoot, version)
-    : [];
+  // Non-npm projects (or a package.json without a version) have no manifest to
+  // bump — the tag carries the version.
+  const changedFiles = hasPackageVersion(repoRoot) ? applyVersion(repoRoot, version) : [];
 
   const lastTag = findLastTag(config.tagPrefix, opts);
   const commits = collectCommitsSince(lastTag, opts);

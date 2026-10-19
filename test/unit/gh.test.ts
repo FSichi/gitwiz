@@ -29,10 +29,33 @@ describe('parseRepoSlug', () => {
     ['https://github.com/FSichi/gitwiz.git', 'FSichi/gitwiz'],
     ['ssh://git@github.com/Codetria-Labs/Fluentia.git', 'Codetria-Labs/Fluentia'],
     ['https://github.com/Codetria-Labs/Fluentia', 'Codetria-Labs/Fluentia'],
+    ['ssh://git@github.com:22/FSichi/gitwiz.git', 'FSichi/gitwiz'],
+    ['org-123@github.com:FSichi/gitwiz.git', 'FSichi/gitwiz'],
+    ['https://x-access-token:ghp_secret@github.com/FSichi/gitwiz.git', 'FSichi/gitwiz'],
   ])('turns the remote %s into %s', (remote, expected) => {
     const web = parseRepoWebUrl(remote);
     expect(web?.host).toBe('github');
     expect(parseRepoSlug(web!.url)).toBe(expected);
+  });
+});
+
+describe('parseRepoWebUrl', () => {
+  // The web URL is written into CHANGELOG links, which get committed.
+  it('never keeps credentials embedded in an https remote', () => {
+    expect(parseRepoWebUrl('https://user:ghp_secret@github.com/FSichi/gitwiz.git')?.url).toBe(
+      'https://github.com/FSichi/gitwiz',
+    );
+  });
+
+  it('drops the SSH port instead of treating it as the owner', () => {
+    expect(parseRepoWebUrl('ssh://git@gitlab.example.com:2222/team/app.git')?.url).toBe(
+      'https://gitlab.example.com/team/app',
+    );
+  });
+
+  it('ignores local-path remotes, including Windows drive letters', () => {
+    expect(parseRepoWebUrl('C:\\Users\\me\\origin.git')).toBeNull();
+    expect(parseRepoWebUrl('/srv/git/origin.git')).toBeNull();
   });
 });
 
