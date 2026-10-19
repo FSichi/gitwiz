@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1](https://github.com/FSichi/gitwiz/compare/v1.4.0...v1.4.1) (2026-10-19)
+
+### Bug Fixes
+
+* **gh:** submit reviews under --json, never prompt headless, answer faster ([0112fd5](https://github.com/FSichi/gitwiz/commit/0112fd55e8e58de63ec1a318b8da2b0cdc6180ab))
+* **init:** keep the existing config and allow releases without a tag prefix ([2c2d0a7](https://github.com/FSichi/gitwiz/commit/2c2d0a78a2c2f3d233b18c2ef02f267c945877b8))
+* **release:** keep trailers and tokens out of the changelog, order tags by semver ([dc1f8a3](https://github.com/FSichi/gitwiz/commit/dc1f8a3bd848d183e8e4a503908da401848b8fea))
+* **commands:** handle file names with spaces and accents, from any subfolder ([ecf21dc](https://github.com/FSichi/gitwiz/commit/ecf21dc8ba1036d20be3e52021593a04f98a2f90))
+
+### Performance
+
+* **cli:** start in half the time and install with no dependencies ([c0ded51](https://github.com/FSichi/gitwiz/commit/c0ded51d9738c1fe2e1a966e37a244ca921deca1))
+* **config:** detect the branches with a single git call ([2b739ed](https://github.com/FSichi/gitwiz/commit/2b739ed78d6cb22b755be4e9909906c5b21e780b))
+
 ## [1.4.0](https://github.com/FSichi/gitwiz/compare/v1.3.0...v1.4.0) (2026-08-11)
 
 ### Features
