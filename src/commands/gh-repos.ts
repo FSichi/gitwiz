@@ -1,6 +1,7 @@
 import pc from 'picocolors';
-import { captureGhJson, ensureGh } from '../core/gh.js';
+import { captureGhJson } from '../core/gh.js';
 import { currentUser, listOrgs } from '../core/gh-project.js';
+import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
 import { emitJson, isJsonMode, log, section } from '../ui/output.js';
 import { assertInteractive, select } from '../ui/prompts.js';
@@ -36,18 +37,20 @@ export function formatAge(days: number | null): string {
 }
 
 export async function ghReposCommand(opts: GhReposOptions = {}): Promise<void> {
-  ensureGh();
   const limit = opts.limit ?? '30';
+  if (!/^[1-9]\d*$/.test(limit)) {
+    throw new GitwizError(t('"{value}" is not a valid number.', { value: limit }));
+  }
 
   let owner = opts.owner;
   if (!owner && !isJsonMode()) {
-    const orgs = listOrgs();
+    const [orgs, me] = await Promise.all([listOrgs(), currentUser()]);
     if (orgs.length > 0) {
       assertInteractive();
       owner = await select({
         message: t('Whose repositories do you want to see?'),
         choices: [
-          { name: t('Mine'), value: '@me', hint: currentUser() },
+          { name: t('Mine'), value: '@me', hint: me },
           ...orgs.map((o) => ({ name: o, value: o })),
         ],
       });

@@ -1,5 +1,5 @@
 import pc from 'picocolors';
-import { captureGh, captureGhJson, ensureGh, getRepoSlug } from '../core/gh.js';
+import { captureGh, captureGhJson, captureGhJsonAsync, getRepoSlug } from '../core/gh.js';
 import {
   addItemToProject,
   getIterations,
@@ -7,6 +7,8 @@ import {
   getProjectId,
   isIteration,
   selectableFields,
+  setIterationField,
+  setSingleSelectField,
   type ProjectField,
 } from '../core/gh-project.js';
 import { pickProject, resolveOwner } from './gh-projects.js';
@@ -35,20 +37,40 @@ interface FilledField {
   value: string;
 }
 
-export async function ghTaskCommand(opts: GhTaskOptions = {}): Promise<void> {
-  ensureGh();
-  if (!opts.title) assertInteractive();
-
-  const owner = await resolveOwner(opts.owner, !opts.project);
-  const project = opts.project
-    ? { number: Number(opts.project), title: `#${opts.project}` }
-    : await pickProject(owner);
-  if (Number.isNaN(project.number)) {
-    throw new GitwizError(t('"{value}" is not a project number.', { value: opts.project! }));
+/** "3" or "#3" → 3; anything else is a usage error. */
+function parseProjectNumber(value: string): number {
+  const number = Number(value.trim().replace(/^#/, ''));
+  if (!Number.isInteger(number) || number <= 0) {
+    throw new GitwizError(t('"{value}" is not a project number.', { value }));
   }
+  return number;
+}
+
+export async function ghTaskCommand(opts: GhTaskOptions = {}): Promise<void> {
+  // --title is the switch to headless mode: from there on nothing may prompt,
+  // because a prompt with no terminal behind it would hang an agent forever.
+  const nonInteractive = Boolean(opts.title);
+  if (!nonInteractive) assertInteractive();
+  if (opts.title !== undefined && opts.title.trim() === '') {
+    throw new GitwizError(t('The title cannot be empty.'));
+  }
+
+  const owner = await resolveOwner(opts.owner, !nonInteractive && !opts.project);
+  const project = opts.project
+    ? { number: parseProjectNumber(opts.project), title: `#${opts.project.replace(/^#/, '')}` }
+    : await pickProject(owner, !nonInteractive);
+
+  // The board's fields are needed either way; read them while the user types.
+  const fieldsRequest = getProjectFields(project.number, owner);
+  fieldsRequest.catch(() => {});
 
   // The issue needs a repo. The one you are standing in is almost always right.
   let repo = opts.repo ?? getRepoSlug() ?? undefined;
+  if (!repo && nonInteractive) {
+    throw new GitwizError(t('This folder is not a GitHub repository, so the issue has no home.'), {
+      hint: t('Pass --repo <owner/repo>.'),
+    });
+  }
   if (!repo) {
     const repos = captureGhJson<{ name: string }[]>([
       'repo', 'list', owner, '--limit', '100', '--json', 'name',
@@ -73,8 +95,8 @@ export async function ghTaskCommand(opts: GhTaskOptions = {}): Promise<void> {
 
   // Labels come from the repo, never invented — an unknown label fails the create.
   let labels: string[] = [];
-  if (!opts.title) {
-    const available = captureGhJson<LabelRow[]>([
+  if (!nonInteractive) {
+    const available = await captureGhJsonAsync<LabelRow[]>([
       'label', 'list', '--repo', repo, '--limit', '100', '--json', 'name,description',
     ]);
     if (available.length > 0) {
@@ -91,13 +113,16 @@ export async function ghTaskCommand(opts: GhTaskOptions = {}): Promise<void> {
 
   // Ask about every field the board actually offers *before* creating anything,
   // so a half-filled card is a deliberate choice rather than an accident.
-  const fields = getProjectFields(project.number, owner);
+  const fields = await fieldsRequest;
   const askable = selectableFields(fields);
   const iterationField = fields.find(isIteration);
   const chosen = new Map<string, { field: ProjectField; optionId: string; label: string }>();
   let iterationChoice: { id: string; title: string } | null = null;
+  // Needed to read iterations and again to fill fields — look it up once.
+  let cachedProjectId: string | undefined;
+  const projectId = () => (cachedProjectId ??= getProjectId(project.number, owner));
 
-  if (!opts.title) {
+  if (!nonInteractive) {
     for (const field of askable) {
       const picked = await select<{ id: string; name: string } | null>({
         message: t('{field}?', { field: field.name }),
@@ -110,8 +135,7 @@ export async function ghTaskCommand(opts: GhTaskOptions = {}): Promise<void> {
     }
 
     if (iterationField) {
-      const projectId = getProjectId(project.number, owner);
-      const iterations = getIterations(projectId, iterationField.name);
+      const iterations = getIterations(projectId(), iterationField.name);
       if (iterations.length === 0) {
         log.dim(t('No active iteration on "{field}" — skipping it.', { field: iterationField.name }));
       } else {
@@ -154,14 +178,12 @@ export async function ghTaskCommand(opts: GhTaskOptions = {}): Promise<void> {
   const filled: FilledField[] = [];
 
   if (chosen.size > 0 || iterationChoice) {
-    const projectId = getProjectId(project.number, owner);
-    const { setIterationField, setSingleSelectField } = await import('../core/gh-project.js');
     for (const { field, optionId, label } of chosen.values()) {
-      setSingleSelectField(projectId, itemId, field.id, optionId);
+      setSingleSelectField(projectId(), itemId, field.id, optionId);
       filled.push({ name: field.name, value: label });
     }
     if (iterationChoice && iterationField) {
-      setIterationField(projectId, itemId, iterationField.id, iterationChoice.id);
+      setIterationField(projectId(), itemId, iterationField.id, iterationChoice.id);
       filled.push({ name: iterationField.name, value: iterationChoice.title });
     }
   }

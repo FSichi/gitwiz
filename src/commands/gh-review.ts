@@ -1,5 +1,5 @@
 import pc from 'picocolors';
-import { captureGh, captureGhJson, ensureGh, ensureRepoSlug, runGh } from '../core/gh.js';
+import { captureGh, captureGhJson, captureGhJsonAsync, ensureRepoSlug, runGh } from '../core/gh.js';
 import { currentUser } from '../core/gh-project.js';
 import { ensureGitRepo } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
@@ -52,19 +52,52 @@ export function summarizeChecks(
   return summary;
 }
 
+type Verdict = 'approve' | 'request-changes' | 'comment';
+
+/**
+ * The review the flags ask for, or null when none was passed. Validated up
+ * front: GitHub rejects a change request without a body, and two verdicts at
+ * once can only be a mistake. Exported for unit tests.
+ */
+export function verdictFromFlags(opts: GhReviewOptions): { verdict: Verdict; body: string } | null {
+  if (opts.approve && opts.requestChanges) {
+    throw new GitwizError(t('Pass only one of --approve or --request-changes.'));
+  }
+  if (opts.comment !== undefined && opts.comment.trim() === '' && !opts.approve) {
+    throw new GitwizError(t('The review comment cannot be empty.'));
+  }
+  if (opts.requestChanges && opts.comment === undefined) {
+    throw new GitwizError(t('Say what needs to change.'), {
+      hint: t('Add --comment "<what to change>" to --request-changes.'),
+    });
+  }
+  if (opts.approve) return { verdict: 'approve', body: opts.comment ?? '' };
+  if (opts.requestChanges) return { verdict: 'request-changes', body: opts.comment ?? '' };
+  if (opts.comment !== undefined) return { verdict: 'comment', body: opts.comment };
+  return null;
+}
+
+/** "12" or "#12" → 12; anything else is a usage error. Exported for unit tests. */
+export function parsePrNumber(value: string): number {
+  const number = Number(value.trim().replace(/^#/, ''));
+  if (!Number.isInteger(number) || number <= 0) {
+    throw new GitwizError(t('"{value}" is not a pull request number.', { value }));
+  }
+  return number;
+}
+
 export async function ghReviewCommand(opts: GhReviewOptions = {}): Promise<void> {
   ensureGitRepo();
-  ensureGh();
   const slug = ensureRepoSlug();
-  const nonInteractive = Boolean(opts.approve || opts.requestChanges || opts.comment);
+  const flagged = verdictFromFlags(opts);
+  if (flagged && !opts.pr) {
+    throw new GitwizError(t('Say which pull request to review with --pr <number>.'));
+  }
 
   // Resolve which PR to look at.
   let number: number;
   if (opts.pr) {
-    number = Number(opts.pr);
-    if (Number.isNaN(number)) {
-      throw new GitwizError(t('"{value}" is not a pull request number.', { value: opts.pr }));
-    }
+    number = parsePrNumber(opts.pr);
   } else {
     const open = captureGhJson<PrSummary[]>([
       'pr', 'list', '--repo', slug, '--state', 'open', '--limit', '50',
@@ -91,11 +124,17 @@ export async function ghReviewCommand(opts: GhReviewOptions = {}): Promise<void>
     });
   }
 
-  const pr = captureGhJson<PrSummary>(['pr', 'view', String(number), '--repo', slug, '--json', PR_FIELDS]);
+  // Who is reviewing only matters to the interactive menu; fetch it alongside the PR.
+  const meRequest = !flagged && !isJsonMode() ? currentUser() : null;
+  meRequest?.catch(() => {});
+  const pr = await captureGhJsonAsync<PrSummary>(['pr', 'view', String(number), '--repo', slug, '--json', PR_FIELDS]);
   const checks = summarizeChecks(pr.statusCheckRollup);
 
   if (isJsonMode()) {
+    // A verdict passed with --json is still submitted — the JSON reports it.
+    if (flagged) await submit(slug, number, flagged.verdict, flagged.body);
     emitJson({
+      submitted: flagged?.verdict ?? null,
       repo: slug,
       pullRequest: {
         number: pr.number, title: pr.title, url: pr.url, isDraft: pr.isDraft,
@@ -145,13 +184,13 @@ export async function ghReviewCommand(opts: GhReviewOptions = {}): Promise<void>
   }
 
   // Flag-driven verdicts skip the menu entirely.
-  if (nonInteractive) {
-    await submit(slug, number, opts.approve ? 'approve' : opts.requestChanges ? 'request-changes' : 'comment', opts.comment ?? '');
+  if (flagged) {
+    await submit(slug, number, flagged.verdict, flagged.body);
     return;
   }
 
   assertInteractive();
-  const me = currentUser();
+  const me = await meRequest!;
   const isMine = pr.author.login === me;
 
   log.blank();

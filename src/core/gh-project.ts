@@ -1,4 +1,4 @@
-import { captureGh, captureGhJson, type GhOptions } from './gh.js';
+import { captureGh, captureGhAsync, captureGhJson, captureGhJsonAsync, type GhOptions } from './gh.js';
 
 // ---------------------------------------------------------------------------
 // Types mirroring `gh project ... --format json`
@@ -59,15 +59,18 @@ export function selectableFields(fields: ProjectField[]): ProjectField[] {
 // Reads
 // ---------------------------------------------------------------------------
 
+// The two account reads are async: callers usually need both, and each is a
+// network round trip, so they run side by side.
+
 /** Organizations the authenticated user belongs to. */
-export function listOrgs(opts: GhOptions = {}): string[] {
-  const out = captureGh(['org', 'list', '--limit', '100'], opts);
+export async function listOrgs(opts: GhOptions = {}): Promise<string[]> {
+  const out = await captureGhAsync(['org', 'list', '--limit', '100'], opts);
   return out.split('\n').map((l) => l.trim()).filter((l) => l !== '');
 }
 
 /** The authenticated user's login — the owner for personal projects. */
-export function currentUser(opts: GhOptions = {}): string {
-  return captureGh(['api', 'user', '--jq', '.login'], opts);
+export function currentUser(opts: GhOptions = {}): Promise<string> {
+  return captureGhAsync(['api', 'user', '--jq', '.login'], opts);
 }
 
 export function listProjects(owner: string, opts: GhOptions = {}): ProjectSummary[] {
@@ -78,12 +81,13 @@ export function listProjects(owner: string, opts: GhOptions = {}): ProjectSummar
   return (data.projects ?? []).filter((p) => !p.closed);
 }
 
-export function getProjectFields(
+/** Async so `gh task` can read the board while the user is still typing. */
+export async function getProjectFields(
   projectNumber: number,
   owner: string,
   opts: GhOptions = {},
-): ProjectField[] {
-  const data = captureGhJson<{ fields?: ProjectField[] }>(
+): Promise<ProjectField[]> {
+  const data = await captureGhJsonAsync<{ fields?: ProjectField[] }>(
     ['project', 'field-list', String(projectNumber), '--owner', owner, '--format', 'json'],
     opts,
   );
@@ -124,11 +128,13 @@ export function getIterations(
   fieldName: string,
   opts: GhOptions = {},
 ): { id: string; title: string; startDate: string }[] {
+  // The field name travels as a variable, never spliced into the query: a name
+  // with a quote in it would otherwise break (or rewrite) the GraphQL document.
   const query = `
-query($project: ID!) {
+query($project: ID!, $field: String!) {
   node(id: $project) {
     ... on ProjectV2 {
-      field(name: "${fieldName}") {
+      field(name: $field) {
         ... on ProjectV2IterationField {
           configuration { iterations { id title startDate } }
         }
@@ -138,7 +144,7 @@ query($project: ID!) {
 }`.trim();
   const data = captureGhJson<{
     data?: { node?: { field?: { configuration?: { iterations?: { id: string; title: string; startDate: string }[] } } } };
-  }>(['api', 'graphql', '-f', `project=${projectId}`, '-f', `query=${query}`], opts);
+  }>(['api', 'graphql', '-f', `project=${projectId}`, '-f', `field=${fieldName}`, '-f', `query=${query}`], opts);
   return data.data?.node?.field?.configuration?.iterations ?? [];
 }
 

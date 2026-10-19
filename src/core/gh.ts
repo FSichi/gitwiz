@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
 import { echoCommand, isVerbose } from '../ui/output.js';
@@ -15,28 +15,75 @@ export interface GhOptions {
   echo?: boolean;
 }
 
+// gh exits with 4 when it has no usable login (documented in `gh help exit-codes`).
+const EXIT_AUTH_REQUIRED = 4;
+const MAX_BUFFER = 256 * 1024 * 1024;
+
+function notInstalledError(): GitwizError {
+  return new GitwizError(t('The GitHub CLI (gh) is not installed.'), {
+    hint: t('Install it from https://cli.github.com — gitwiz uses it for everything GitHub.'),
+  });
+}
+
+function notLoggedInError(): GitwizError {
+  return new GitwizError(t('You are not logged in to GitHub.'), {
+    hint: t('Run: gh auth login'),
+  });
+}
+
+/** A failure to even start gh: "not installed" when it is missing from PATH. */
+function launchError(error: Error & { code?: unknown }): GitwizError {
+  if (error.code === 'ENOENT') return notInstalledError();
+  return new GitwizError(t('Could not run the GitHub CLI (gh): {message}', {
+    message: error.message,
+  }), {
+    hint: t('Install it from https://cli.github.com and run "gh auth login".'),
+  });
+}
+
 function spawnGh(args: string[], opts: GhOptions, stdio: 'inherit' | 'pipe') {
   const result = spawnSync('gh', args, {
     cwd: opts.cwd,
     stdio: stdio === 'inherit' ? 'inherit' : ['ignore', 'pipe', 'pipe'],
     encoding: 'utf8',
+    maxBuffer: MAX_BUFFER,
     // No shell — same reasoning as git.ts: args pass verbatim, so PR bodies with
     // quotes, backticks or $VARS survive untouched.
   });
-  if (result.error) {
-    throw new GitwizError(t('Could not run the GitHub CLI (gh): {message}', {
-      message: result.error.message,
-    }), {
-      hint: t('Install it from https://cli.github.com and run "gh auth login".'),
+  if (result.error) throw launchError(result.error);
+  return result;
+}
+
+/**
+ * The outcome of a captured gh run, or the error that explains it. gh is not
+ * probed up front (`gh auth status` alone costs a network round trip on every
+ * command): a missing install or login is recognized from the failure itself.
+ */
+function checkCaptured(args: string[], status: number | null, stdout: string, stderr: string): string {
+  if (status === 0) return stdout.trim();
+  const detail = stderr.trim();
+  if (status === EXIT_AUTH_REQUIRED) throw notLoggedInError();
+  throw new GitwizError(t('gh {args} failed{detail}', {
+    args: args.join(' '),
+    detail: detail ? `: ${detail}` : '.',
+  }), { hint: hintForStderr(detail) });
+}
+
+function parseJson<T>(out: string): T {
+  try {
+    return JSON.parse(out) as T;
+  } catch {
+    throw new GitwizError(t('gh returned output that is not valid JSON.'), {
+      hint: t('Run the same command with --verbose to see what it printed.'),
     });
   }
-  return result;
 }
 
 /** Run a mutating gh command: echoes the command and streams output to the user. */
 export function runGh(args: string[], opts: GhOptions = {}): void {
   echoCommand('gh', args);
   const result = spawnGh(args, opts, 'inherit');
+  if (result.status === EXIT_AUTH_REQUIRED) throw notLoggedInError();
   if (result.status !== 0) {
     throw new GitwizError(t('gh {sub} failed (exit code {code}).', {
       sub: args[0] ?? '',
@@ -59,14 +106,7 @@ export function tryRunGh(args: string[], opts: GhOptions = {}): boolean {
 export function captureGh(args: string[], opts: GhOptions = {}): string {
   if (opts.echo || isVerbose()) echoCommand('gh', args);
   const result = spawnGh(args, opts, 'pipe');
-  if (result.status !== 0) {
-    const stderr = (result.stderr ?? '').trim();
-    throw new GitwizError(t('gh {args} failed{detail}', {
-      args: args.join(' '),
-      detail: stderr ? `: ${stderr}` : '.',
-    }), { hint: hintForStderr(stderr) });
-  }
-  return (result.stdout ?? '').trim();
+  return checkCaptured(args, result.status, result.stdout ?? '', result.stderr ?? '');
 }
 
 /** Like captureGh but returns null on failure. */
@@ -79,14 +119,40 @@ export function tryCaptureGh(args: string[], opts: GhOptions = {}): string | nul
 
 /** Run a gh command that emits JSON and parse it. */
 export function captureGhJson<T>(args: string[], opts: GhOptions = {}): T {
-  const out = captureGh(args, opts);
-  try {
-    return JSON.parse(out) as T;
-  } catch {
-    throw new GitwizError(t('gh returned output that is not valid JSON.'), {
-      hint: t('Run the same command with --verbose to see what it printed.'),
-    });
-  }
+  return parseJson<T>(captureGh(args, opts));
+}
+
+/**
+ * captureGh without blocking, so independent reads (orgs + login, a PR + who
+ * is reviewing it) overlap their network round trips instead of queueing.
+ */
+export function captureGhAsync(args: string[], opts: GhOptions = {}): Promise<string> {
+  if (opts.echo || isVerbose()) echoCommand('gh', args);
+  return new Promise((resolve, reject) => {
+    execFile(
+      'gh',
+      args,
+      { cwd: opts.cwd, encoding: 'utf8', maxBuffer: MAX_BUFFER, windowsHide: true },
+      (error, stdout, stderr) => {
+        // A string code means gh never ran (ENOENT…); a number is its exit code.
+        if (error && typeof error.code === 'string') {
+          reject(launchError(error));
+          return;
+        }
+        const status = error ? (typeof error.code === 'number' ? error.code : 1) : 0;
+        try {
+          resolve(checkCaptured(args, status, stdout, stderr));
+        } catch (err) {
+          reject(err);
+        }
+      },
+    );
+  });
+}
+
+/** captureGhJson without blocking — see captureGhAsync. */
+export async function captureGhJsonAsync<T>(args: string[], opts: GhOptions = {}): Promise<T> {
+  return parseJson<T>(await captureGhAsync(args, opts));
 }
 
 /**
@@ -106,37 +172,6 @@ function hintForStderr(stderr: string): string | undefined {
     return t('Run "gh auth login" to authenticate.');
   }
   return undefined;
-}
-
-// ---------------------------------------------------------------------------
-// Environment checks
-// ---------------------------------------------------------------------------
-
-export function isGhInstalled(): boolean {
-  const result = spawnSync('gh', ['--version'], { stdio: 'ignore' });
-  return !result.error && result.status === 0;
-}
-
-export function isGhAuthenticated(): boolean {
-  const result = spawnSync('gh', ['auth', 'status'], { stdio: 'ignore' });
-  return !result.error && result.status === 0;
-}
-
-/**
- * Guard for every GitHub command. Checks the two failure modes separately so the
- * hint names the actual fix instead of a generic "something went wrong".
- */
-export function ensureGh(): void {
-  if (!isGhInstalled()) {
-    throw new GitwizError(t('The GitHub CLI (gh) is not installed.'), {
-      hint: t('Install it from https://cli.github.com — gitwiz uses it for everything GitHub.'),
-    });
-  }
-  if (!isGhAuthenticated()) {
-    throw new GitwizError(t('You are not logged in to GitHub.'), {
-      hint: t('Run: gh auth login'),
-    });
-  }
 }
 
 // ---------------------------------------------------------------------------
