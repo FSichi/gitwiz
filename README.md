@@ -423,6 +423,16 @@ Until the shim is fixed upstream, any of these works:
 
 - Avoid spaces in arguments (`-m add-login`), which keeps the shim's command line unquoted.
 
+### Windows: `NVM blocked package-manager execution because a delegated command could not be trusted` (NVM4306)
+
+NVM for Windows 2.x keeps a trust record of every global command and refuses one whose launcher changed since it was trusted. Updating gitwiz rewrites `gitwiz.cmd`, so right after `gitwiz update` (or `npm i -g @fsichi/gitwiz`) the next `gitwiz` can be blocked with *"delegated script changed since it was trusted"*. That is NVM protecting you, not a broken install. NVM may re-trust the command by itself shortly after; if it doesn't, run:
+
+```bash
+nvm reshim
+```
+
+`gitwiz update` reminds you of this when it detects an NVM for Windows 2.x install.
+
 ## Why gitwiz?
 
 - **Zero prerequisites** — plain git underneath. No git-flow binary, no global config.
