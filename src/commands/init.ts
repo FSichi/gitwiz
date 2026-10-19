@@ -1,7 +1,12 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pc from 'picocolors';
-import { buildAgentInstructions, writeManagedBlock } from '../core/ai-instructions.js';
+import {
+  addAgentsImport,
+  buildAgentInstructions,
+  claudeFileMissingImport,
+  writeManagedBlock,
+} from '../core/ai-instructions.js';
 import {
   detectDevelopBranch,
   detectMainBranch,
@@ -10,6 +15,7 @@ import {
   readBranchRefs,
 } from '../core/config.js';
 import {
+  ensureGitRepo,
   getRepoRoot,
   hasRemote,
   isGitRepo,
@@ -55,8 +61,34 @@ export function mergeInitSettings(
   return merged;
 }
 
-export async function initCommand(): Promise<void> {
-  assertInteractive();
+const AGENTS_HEADER = '# AGENTS.md\n\nInstructions for AI coding agents working in this repository.';
+
+/** Write (or refresh) the managed gitwiz block in AGENTS.md from the current config. */
+function writeAgentsFile(repoRoot: string): void {
+  const { config } = loadConfig();
+  const result = writeManagedBlock(join(repoRoot, 'AGENTS.md'), buildAgentInstructions(config), AGENTS_HEADER);
+  log.success(result === 'created' ? t('Created AGENTS.md') : t('Updated AGENTS.md'));
+}
+
+/**
+ * `gitwiz init --agents`: refresh only the agent instructions, headless — so an
+ * upgrade of gitwiz (new commands, new flags) can reach every repo's AGENTS.md,
+ * and the CLAUDE.md that Claude Code reads instead gets the import it needs.
+ */
+async function initAgentsOnly(): Promise<void> {
+  ensureGitRepo();
+  const repoRoot = getRepoRoot();
+  writeAgentsFile(repoRoot);
+  const claude = claudeFileMissingImport(repoRoot);
+  if (claude) {
+    addAgentsImport(repoRoot, claude);
+    log.success(t('Added "{line}" to {file} so Claude Code reads AGENTS.md.', { line: claude.importLine, file: claude.relPath }));
+  }
+}
+
+export async function initCommand(opts: { agents?: boolean } = {}): Promise<void> {
+  if (opts.agents) return initAgentsOnly();
+  assertInteractive(t('To write only the AI-agent instructions without prompts, run: gitwiz init --agents'));
 
   if (!isGitRepo()) {
     const create = await confirm({
@@ -171,14 +203,22 @@ export async function initCommand(): Promise<void> {
     default: true,
   });
   if (addAgents) {
-    const { config } = loadConfig();
-    const block = buildAgentInstructions(config);
-    const result = writeManagedBlock(
-      join(repoRoot, 'AGENTS.md'),
-      block,
-      '# AGENTS.md\n\nInstructions for AI coding agents working in this repository.',
-    );
-    log.success(result === 'created' ? t('Created AGENTS.md') : t('Updated AGENTS.md'));
+    writeAgentsFile(repoRoot);
+    // With a CLAUDE.md present, Claude Code would never open AGENTS.md on its own.
+    const claude = claudeFileMissingImport(repoRoot);
+    if (
+      claude &&
+      (await confirm({
+        message: t('Add "{line}" to the top of {file} so Claude Code reads AGENTS.md too?', {
+          line: claude.importLine,
+          file: claude.relPath,
+        }),
+        default: true,
+      }))
+    ) {
+      addAgentsImport(repoRoot, claude);
+      log.success(t('Updated {file}', { file: claude.relPath }));
+    }
   }
 
   log.blank();
