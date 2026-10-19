@@ -84,7 +84,8 @@ export function buildAgentInstructions(config: GitwizConfig): string {
     '',
     'Plain git is the right tool for what gitwiz does not do — `git push`, `git merge`, `git fetch`, `git stash`, undoing things (its `sync`, `undo`, `stash` and `init` are wizards for humans). Keep the names and messages above when you use it.',
     'With `--json`, stdout carries only JSON — failures too: `{"error": "…", "hint": "…"}`. Refresh this block after updating gitwiz: `gitwiz init --agents`.',
-    `Windows: if a call fails before gitwiz even runs, with \`"C:\\…\\Author" is not recognized…\` (an NVM for Windows shim and an argument with spaces), call it as \`node ${cli} <args>\`.`,
+    // cmd.exe prints this in the system language, so name the Spanish text too.
+    `Windows: if a call fails before gitwiz even runs, with \`"C:\\…\\Author" is not recognized…\` or \`"C:\\…\\Author" no se reconoce…\` (an NVM for Windows shim and an argument with spaces), call it as \`node ${cli} <args>\`.`,
     BLOCK_END,
   );
 
