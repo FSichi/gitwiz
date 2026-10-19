@@ -1,7 +1,7 @@
 import pc from 'picocolors';
 import { loadConfig } from '../core/config.js';
 import { buildCommitHeader, buildCommitMessage, normalizeScope } from '../core/commit-message.js';
-import { captureGitRaw, captureGit, ensureGitRepo, getCurrentBranch, runGit } from '../core/git.js';
+import { captureGitPaths, captureGitRaw, ensureGitRepo, getCurrentBranch, runGit, type GitOptions } from '../core/git.js';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
 import { box, log } from '../ui/output.js';
@@ -17,26 +17,32 @@ export interface CommitOptions {
   allowProtected?: boolean;
 }
 
-function getStagedFiles(): string[] {
-  return captureGit(['diff', '--name-only', '--cached']).split('\n').filter(Boolean);
+function getStagedFiles(opts: GitOptions): string[] {
+  return captureGitPaths(['diff', '--name-only', '--cached'], opts);
 }
 
-/** Changed (tracked) + untracked files that could be staged. */
-function getStageableFiles(): string[] {
-  // Use captureGitRaw — porcelain output starts with a space for working-tree
-  // changes, and .trim() would strip that leading space, breaking detection.
-  const lines = captureGitRaw(['status', '--porcelain']).split('\n').filter(Boolean);
+/**
+ * Parse `git status --porcelain -z` into the changed (tracked) + untracked files
+ * that could be staged. Paths come back verbatim and relative to the repo root.
+ * Exported for unit tests.
+ */
+export function parseStageableFiles(porcelainZ: string): string[] {
+  const entries = porcelainZ.split('\0');
   const files: string[] = [];
-  for (const line of lines) {
-    const xy = line.slice(0, 2);
-    if (xy === '??' || xy[1] !== ' ') {
-      let path = line.slice(3);
-      const arrow = path.indexOf(' -> ');
-      if (arrow !== -1) path = path.slice(arrow + 4);
-      files.push(path);
-    }
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]!;
+    if (entry.length < 4) continue;
+    const xy = entry.slice(0, 2);
+    // A rename or copy carries its original path as the next entry — skip it.
+    if (/[RC]/.test(xy)) i++;
+    if (xy === '??' || xy[1] !== ' ') files.push(entry.slice(3));
   }
   return files;
+}
+
+function getStageableFiles(opts: GitOptions): string[] {
+  // Raw, not trimmed — a porcelain entry starts with a space for working-tree changes.
+  return parseStageableFiles(captureGitRaw(['status', '--porcelain', '-z'], opts));
 }
 
 function createCommit(message: string): void {
@@ -55,8 +61,24 @@ function createCommit(message: string): void {
 
 export async function commitCommand(opts: CommitOptions = {}): Promise<void> {
   ensureGitRepo();
-  const { config } = loadConfig();
+  const { config, repoRoot } = loadConfig();
+  // Paths from status/diff are relative to the repo root, so path-taking
+  // commands run from there too — otherwise `git add` misses them from a subfolder.
+  const atRoot: GitOptions = { cwd: repoRoot };
   const nonInteractive = Boolean(opts.type && opts.message);
+
+  // Half the flags in a script would otherwise surface as a vague "needs a terminal".
+  if (!nonInteractive && (opts.type || opts.message)) {
+    assertInteractive(t('To commit without prompts, pass both --type and -m.'));
+  }
+  if (opts.type && !config.commitTypes.some((ct) => ct.type === opts.type)) {
+    throw new GitwizError(t('Unknown commit type "{type}".', { type: opts.type }), {
+      hint: t('Valid types: {types}.', { types: config.commitTypes.map((ct) => ct.type).join(', ') }),
+    });
+  }
+  if (opts.message !== undefined && opts.message.trim() === '') {
+    throw new GitwizError(t('Description cannot be empty.'));
+  }
 
   // Protected-branch guard: committing straight to main/develop is usually a mistake.
   const currentBranch = getCurrentBranch();
@@ -86,13 +108,8 @@ export async function commitCommand(opts: CommitOptions = {}): Promise<void> {
 
   // Non-interactive path: everything comes from flags, no prompts.
   if (nonInteractive) {
-    if (!config.commitTypes.some((ct) => ct.type === opts.type)) {
-      throw new GitwizError(t('Unknown commit type "{type}".', { type: opts.type! }), {
-        hint: t('Valid types: {types}.', { types: config.commitTypes.map((ct) => ct.type).join(', ') }),
-      });
-    }
-    if (getStagedFiles().length === 0) {
-      if (getStageableFiles().length === 0) {
+    if (getStagedFiles(atRoot).length === 0) {
+      if (getStageableFiles(atRoot).length === 0) {
         log.success(t('Working tree clean — nothing to commit.'));
         return;
       }
@@ -119,9 +136,9 @@ export async function commitCommand(opts: CommitOptions = {}): Promise<void> {
   // Interactive path.
   assertInteractive();
 
-  let staged = getStagedFiles();
+  let staged = getStagedFiles(atRoot);
   if (staged.length === 0) {
-    const stageable = getStageableFiles();
+    const stageable = getStageableFiles(atRoot);
     if (stageable.length === 0) {
       log.success(t('Working tree clean — nothing to commit.'));
       return;
@@ -145,9 +162,9 @@ export async function commitCommand(opts: CommitOptions = {}): Promise<void> {
         log.dim(t('No files selected — nothing to commit.'));
         return;
       }
-      runGit(['add', '--', ...toStage]);
+      runGit(['add', '--', ...toStage], atRoot);
     }
-    staged = getStagedFiles();
+    staged = getStagedFiles(atRoot);
   }
 
   log.blank();
@@ -155,25 +172,32 @@ export async function commitCommand(opts: CommitOptions = {}): Promise<void> {
   for (const file of staged) log.info(`  ${pc.green('+')} ${file}`);
   log.blank();
 
-  const type = await select({
-    message: t('Type of change:'),
-    choices: config.commitTypes.map((ct) => ({
-      name: `${ct.emoji} ${ct.type.padEnd(9)} ${pc.dim(t(ct.description))}`,
-      value: ct.type,
-      short: ct.type,
-    })),
-    pageSize: 12,
-  });
+  // Any flag that was passed answers its own question; the wizard asks the rest.
+  const type =
+    opts.type ??
+    (await select({
+      message: t('Type of change:'),
+      choices: config.commitTypes.map((ct) => ({
+        name: `${ct.emoji} ${ct.type.padEnd(9)} ${pc.dim(t(ct.description))}`,
+        value: ct.type,
+        short: ct.type,
+      })),
+      pageSize: 12,
+    }));
 
-  const scopeRaw = await input({
-    message: `${t('Scope')} ${pc.dim(t('(optional — the area affected, e.g. api, ui, auth)'))}:`,
-  });
+  const scopeRaw =
+    opts.scope ??
+    (await input({
+      message: `${t('Scope')} ${pc.dim(t('(optional — the area affected, e.g. api, ui, auth)'))}:`,
+    }));
   const scope = normalizeScope(scopeRaw) || undefined;
 
-  const description = await input({
-    message: t('Short description (imperative: "add", "fix", not "added"):'),
-    validate: (value) => (value.trim() === '' ? t('Description cannot be empty.') : true),
-  });
+  const description =
+    opts.message ??
+    (await input({
+      message: t('Short description (imperative: "add", "fix", not "added"):'),
+      validate: (value) => (value.trim() === '' ? t('Description cannot be empty.') : true),
+    }));
 
   const breaking = await confirm({
     message: t('Does this break existing behavior (breaking change)?'),

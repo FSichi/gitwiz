@@ -36,4 +36,22 @@ describe('parsePorcelainV2', () => {
     expect(info.untracked).toEqual(['brand-new.ts']);
     expect(info.conflicted).toEqual(['conflicted.ts']);
   });
+
+  // gitwiz runs status with -z: paths arrive verbatim instead of C-quoted
+  // ("src/configuraci\303\263n.ts"), and a rename's old path is its own record.
+  it('parses -z output with spaces, accents and renames', () => {
+    const out = [
+      '# branch.head main',
+      '1 .M N... 100644 100644 100644 abc def src/con espacio.ts',
+      '2 R. N... 100644 100644 100644 abc def R100 src/configuración.ts',
+      'src/old name.ts',
+      '? notas de reunión.md',
+      '',
+    ].join('\0');
+    const info = parsePorcelainV2(out);
+    expect(info.branch).toBe('main');
+    expect(info.unstaged).toEqual(['src/con espacio.ts']);
+    expect(info.staged).toEqual(['src/configuración.ts']);
+    expect(info.untracked).toEqual(['notas de reunión.md']);
+  });
 });

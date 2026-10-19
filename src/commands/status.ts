@@ -1,7 +1,7 @@
 import pc from 'picocolors';
 import { baseBranchFor, loadConfig, type GitwizConfig } from '../core/config.js';
 import {
-  captureGit,
+  captureGitRaw,
   ensureGitRepo,
   getInProgressOperation,
   runGit,
@@ -23,7 +23,11 @@ export interface StatusInfo {
   conflicted: string[];
 }
 
-/** Parse `git status --porcelain=v2 --branch` output. */
+/**
+ * Parse `git status --porcelain=v2 --branch` output, with or without `-z`.
+ * gitwiz runs it with `-z` so paths arrive verbatim (no C-quoting of spaces or
+ * accents); then records end in NUL and a rename's original path is its own record.
+ */
 export function parsePorcelainV2(text: string): StatusInfo {
   const info: StatusInfo = {
     branch: null,
@@ -36,7 +40,10 @@ export function parsePorcelainV2(text: string): StatusInfo {
     conflicted: [],
   };
 
-  for (const line of text.split('\n')) {
+  const nulSeparated = text.includes('\0');
+  const records = text.split(nulSeparated ? '\0' : '\n');
+  for (let i = 0; i < records.length; i++) {
+    const line = records[i]!;
     if (line === '') continue;
     if (line.startsWith('# branch.head ')) {
       const name = line.slice('# branch.head '.length);
@@ -50,11 +57,15 @@ export function parsePorcelainV2(text: string): StatusInfo {
         info.behind = Number(match[2]);
       }
     } else if (line.startsWith('1 ') || line.startsWith('2 ')) {
+      const isRename = line.startsWith('2 ');
       const parts = line.split(' ');
       const xy = parts[1] ?? '..';
-      // Renames ("2") carry "path<TAB>origPath" — show the new path.
-      const rest = parts.slice(line.startsWith('1 ') ? 8 : 9).join(' ');
-      const path = rest.split('\t')[0] ?? rest;
+      let path = parts.slice(isRename ? 9 : 8).join(' ');
+      // Renames ("2") carry the original path too — show the new one.
+      if (isRename) {
+        if (nulSeparated) i++;
+        else path = path.split('\t')[0] ?? path;
+      }
       if (xy[0] !== '.') info.staged.push(path);
       if (xy[1] !== '.') info.unstaged.push(path);
     } else if (line.startsWith('u ')) {
@@ -200,17 +211,24 @@ async function runStatusHub(suggestions: Suggestion[]): Promise<void> {
   await dispatch(choice);
 }
 
+// A forgotten .gitignore can leave thousands of untracked files; the counts
+// stay exact, but the screen should still fit the suggestions below them.
+const MAX_FILES_PER_GROUP = 25;
+
 function printFileGroup(title: string, marker: string, color: (s: string) => string, files: string[]): void {
   if (files.length === 0) return;
   log.info(`  ${color(pc.bold(`${marker} ${files.length} ${title}`))}`);
-  for (const file of files) log.info(`     ${color('·')} ${file}`);
+  for (const file of files.slice(0, MAX_FILES_PER_GROUP)) log.info(`     ${color('·')} ${file}`);
+  if (files.length > MAX_FILES_PER_GROUP) {
+    log.dim(`   ${t('  …and {n} more', { n: String(files.length - MAX_FILES_PER_GROUP) })}`);
+  }
 }
 
 export async function statusCommand(opts: GitOptions = {}): Promise<void> {
   ensureGitRepo(opts);
   const { config } = loadConfig(opts);
 
-  const raw = captureGit(['status', '--porcelain=v2', '--branch'], opts);
+  const raw = captureGitRaw(['status', '--porcelain=v2', '--branch', '-z'], opts);
   const info = parsePorcelainV2(raw);
   const operation = getInProgressOperation(opts);
   const releaseBranch =

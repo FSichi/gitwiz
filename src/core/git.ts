@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { GitwizError } from '../ui/errors.js';
 import { t } from '../ui/i18n.js';
 import { echoGitCommand, isVerbose } from '../ui/output.js';
@@ -9,11 +9,16 @@ export interface GitOptions {
   cwd?: string;
 }
 
+// spawnSync's default 1 MB cap turns a long `git log` (a first release over a big
+// history) into an ENOBUFS that looks like "git is not installed".
+const MAX_BUFFER = 256 * 1024 * 1024;
+
 function spawnGit(args: string[], opts: GitOptions, stdio: 'inherit' | 'pipe') {
   const result = spawnSync('git', args, {
     cwd: opts.cwd,
     stdio: stdio === 'inherit' ? 'inherit' : ['ignore', 'pipe', 'pipe'],
     encoding: 'utf8',
+    maxBuffer: MAX_BUFFER,
     // No shell — args are passed verbatim, immune to quoting/injection issues.
   });
   if (result.error) {
@@ -107,24 +112,52 @@ export function tryCaptureGit(args: string[], opts: GitOptions = {}): string | n
   return (result.stdout ?? '').trim();
 }
 
+/**
+ * Run a git command that lists paths and return them verbatim, one per entry.
+ * Without `-z` git C-quotes any name with a space or a non-ASCII letter
+ * ("src/configuraci\303\263n.ts"), and no later git command accepts that form.
+ */
+export function captureGitPaths(args: string[], opts: GitOptions = {}): string[] {
+  return captureGitRaw([...args, '-z'], opts).split('\0').filter(Boolean);
+}
+
 // ---------------------------------------------------------------------------
 // Repo query helpers
 // ---------------------------------------------------------------------------
 
+// A folder's repo root cannot change during one run, yet almost every command
+// asks for it more than once (ensureGitRepo, loadConfig, release…). Only hits
+// are remembered, so `gitwiz init` can still turn a plain folder into a repo.
+const repoRootCache = new Map<string, string>();
+
+function lookupRepoRoot(opts: GitOptions): string | null {
+  const key = resolve(opts.cwd ?? process.cwd());
+  const cached = repoRootCache.get(key);
+  if (cached !== undefined) return cached;
+  const root = tryCaptureGit(['rev-parse', '--show-toplevel'], opts);
+  if (root) repoRootCache.set(key, root);
+  return root || null;
+}
+
+function notARepoError(): GitwizError {
+  return new GitwizError(t('This folder is not a git repository.'), {
+    hint: t('Move into your project folder, or run "gitwiz init" to set one up.'),
+  });
+}
+
+/** True inside a repository's working tree (not inside .git, not in a bare repo). */
 export function isGitRepo(opts: GitOptions = {}): boolean {
-  return tryCaptureGit(['rev-parse', '--is-inside-work-tree'], opts) === 'true';
+  return lookupRepoRoot(opts) !== null;
 }
 
 export function ensureGitRepo(opts: GitOptions = {}): void {
-  if (!isGitRepo(opts)) {
-    throw new GitwizError(t('This folder is not a git repository.'), {
-      hint: t('Move into your project folder, or run "gitwiz init" to set one up.'),
-    });
-  }
+  if (!isGitRepo(opts)) throw notARepoError();
 }
 
 export function getRepoRoot(opts: GitOptions = {}): string {
-  return captureGit(['rev-parse', '--show-toplevel'], opts);
+  const root = lookupRepoRoot(opts);
+  if (root === null) throw notARepoError();
+  return root;
 }
 
 /** Current branch name; empty string when HEAD is detached. */
