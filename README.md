@@ -54,6 +54,8 @@ Read-only and safe anytime. Shows your branch, how far ahead/behind you are, you
 
 Asks what kind of work you're starting (feature, bugfix, hotfix, refactor, chore, docs), normalizes the name you type, pulls the latest base branch, creates `feature/<name>` and optionally pushes it. Hotfixes branch off your production branch; everything else off your work branch. Uncommitted changes? It offers to stash and bring them along — and without a terminal it simply brings them (git only switches to the base when that overwrites nothing; otherwise the branch starts from your current commit).
 
+It also works in a `git worktree`. When another worktree has the base checked out (your main clone sitting on `develop`), or HEAD is detached (`git worktree add --detach`), git cannot switch to the base there, so gitwiz fetches it and starts the branch from the freshest copy — `origin/<base>`, or your local base if it holds commits you haven't pushed — without switching. The new branch does not track the base.
+
 ### `gitwiz commit`
 
 If nothing is staged it detects your uncommitted changes and lets you choose: **stage everything** and commit, or **pick specific files** from a checkbox list. Then walks you through type → scope → description → breaking change, previews the message, and commits. Messages follow [Conventional Commits](https://www.conventionalcommits.org), which is what powers the automatic changelog.
@@ -62,7 +64,7 @@ Name files after the flags (`gitwiz commit -m "fix: x" -- src/a.ts src/b.ts`) to
 
 ### `gitwiz sync`
 
-Fetches, shows how far ahead/behind you are of your base branch, and offers plain-English strategies: merge the base into your branch (safe default), rebase (with a clear warning if the branch is shared), or just update your local base. If a conflict happens, it tells you exactly what to do — it never tries to resolve things for you.
+Fetches, shows how far ahead/behind you are of your base branch, and offers plain-English strategies: merge the base into your branch (safe default), rebase (with a clear warning if the branch is shared), or just update your local base (not offered when another worktree has the base checked out). If a conflict happens, it tells you exactly what to do — it never tries to resolve things for you.
 
 ### `gitwiz undo`
 
