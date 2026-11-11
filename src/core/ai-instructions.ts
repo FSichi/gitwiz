@@ -69,7 +69,7 @@ export function buildAgentInstructions(config: GitwizConfig): string {
     'Create branches, commits, pull requests and releases **with gitwiz**. You have no terminal, so pass flags: a command missing one stops at once with an error naming it — it never waits for input. Exit code 0 means it happened; otherwise read the error and the hint under it. Do not pipe gitwiz into `tail`/`head` before `&&`: the pipe hides a failure and the next command runs anyway.',
     '',
     '- Where things stand, as data: `gitwiz status --json` (branch, base, ahead/behind, files, suggested next step)',
-    `- New branch: \`gitwiz branch --type ${exampleBranchType} --name add-login\` — uncommitted changes come along; \`--push\` publishes it`,
+    `- New branch: \`gitwiz branch --type ${exampleBranchType} --name add-login\` — uncommitted changes come along; \`--push\` publishes it. It works in a \`git worktree\` too, even when the main clone has the base checked out`,
     '- Commit your files only: `gitwiz commit -m "feat(auth): add login form" -- src/auth/login.ts src/auth/form.ts`',
     '  - the same message can be split: `--type feat --scope auth -m "add login form"`',
     '  - `--all` commits every change in the tree — only when all of it is yours; with neither, what you staged with `git add` is committed',

@@ -738,4 +738,10 @@ export const MESSAGES_ES: Record<string, string> = {
   'branch to open it from (default: the current one)': 'rama desde la que abrirlo (por defecto, la actual)',
   'read the description from a file ("-" for stdin)': 'leer la descripción de un archivo ("-" para stdin)',
   'list the steps it would run, change nothing': 'listar los pasos que correría, sin cambiar nada',
+
+  // ── 1.5.2: branching from a worktree ───────────────────────────────────────
+  'Could not fetch {base} from origin (offline?); using what you have locally.':
+    'No se pudo traer {base} de origin (¿sin conexión?); se usa lo que tenés en local.',
+  'Your local {base} and {remote} have diverged, so {branch} starts from {remote}.':
+    'Tu {base} local y {remote} divergieron, así que {branch} sale de {remote}.',
 };

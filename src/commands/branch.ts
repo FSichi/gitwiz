@@ -2,9 +2,12 @@ import pc from 'picocolors';
 import { normalizeBranchName, validateBranchName } from '../core/branch-name.js';
 import { baseBranchFor, loadConfig, type BranchType } from '../core/config.js';
 import {
+  captureGit,
   ensureGitRepo,
   getCurrentBranch,
   hasRemote,
+  isAncestor,
+  isCheckedOutElsewhere,
   isWorkingTreeClean,
   localBranchExists,
   remoteBranchExists,
@@ -23,17 +26,45 @@ export interface BranchOptions {
   push?: boolean;
 }
 
+/**
+ * The freshest copy of the base to start a branch from without switching to it:
+ * the local base when it already has everything origin has (it may carry
+ * unpushed commits), otherwise origin's — a base checked out in another
+ * worktree is often behind, because nobody pulls it there.
+ */
+function baseStartPoint(base: string, target: string): string {
+  let remoteRef: string | null = null;
+  if (hasRemote()) {
+    if (!tryRunGit(['fetch', 'origin', base])) {
+      log.warn(t('Could not fetch {base} from origin (offline?); using what you have locally.', { base }));
+    }
+    if (remoteBranchExists(base)) remoteRef = `origin/${base}`;
+  }
+  if (remoteRef === null) return base;
+  if (!localBranchExists(base)) return remoteRef;
+  if (isAncestor(remoteRef, base)) return base;
+  if (!isAncestor(base, remoteRef)) {
+    log.warn(
+      t('Your local {base} and {remote} have diverged, so {branch} starts from {remote}.', {
+        base,
+        remote: remoteRef,
+        branch: target,
+      }),
+    );
+  }
+  return remoteRef;
+}
+
 export async function branchCommand(opts: BranchOptions = {}): Promise<void> {
   ensureGitRepo();
   const { config, source } = loadConfig();
   const nonInteractive = Boolean(opts.type && opts.name);
 
+  // A detached HEAD is fine (a worktree made with `git worktree add --detach`):
+  // the new branch starts from the base without switching to it.
   const startBranch = getCurrentBranch();
-  if (startBranch === '') {
-    throw new GitwizError(t('You are not on any branch (detached HEAD).'), {
-      hint: t('Switch to a branch first: git switch {branch}', { branch: config.developBranch }),
-    });
-  }
+  const detached = startBranch === '';
+  const startCommit = detached ? captureGit(['rev-parse', 'HEAD']) : '';
 
   // Resolve the branch type and name (from flags or prompts).
   let branchType: BranchType;
@@ -88,6 +119,11 @@ export async function branchCommand(opts: BranchOptions = {}): Promise<void> {
     throw new GitwizError(t('"{branch}" is not a valid git branch name.', { branch: target }));
   }
 
+  // git cannot switch to a base that another worktree has checked out, and a
+  // detached HEAD has no branch to come back to: in both cases the new branch
+  // starts from the base's ref, and this worktree never visits the base.
+  const fromBaseRef = detached || isCheckedOutElsewhere(base);
+
   // Decide how to handle uncommitted changes before touching the base branch.
   let stashed = false;
   let updateBase = true;
@@ -133,17 +169,37 @@ export async function branchCommand(opts: BranchOptions = {}): Promise<void> {
   // Cancelling or failing midway must leave the user where they started, with
   // their changes back — not on the base branch with the work hidden in a stash.
   const restoreStart = () => {
-    if (getCurrentBranch() !== startBranch) tryRunGit(['switch', startBranch]);
+    const now = getCurrentBranch();
+    if (detached) {
+      if (now !== '') tryRunGit(['switch', '--detach', startCommit]);
+    } else if (now !== startBranch) {
+      tryRunGit(['switch', startBranch]);
+    }
     popStash();
   };
 
   try {
+    let created = false;
     if (updateBase) {
       if (!localBranchExists(base) && !remoteBranchExists(base)) {
         throw new GitwizError(t('Base branch "{base}" does not exist locally or on origin.', { base }), {
           hint: t('Check your gitwiz config or run "gitwiz init".'),
         });
       }
+    }
+    if (updateBase && fromBaseRef) {
+      const from = baseStartPoint(base, target);
+      // --no-track: the new branch must not take the base as its upstream.
+      const args = ['switch', '--no-track', '-c', target, from];
+      if (carryHeadless) created = tryRunGit(args);
+      else {
+        runGit(args);
+        created = true;
+      }
+      if (!created) {
+        log.warn(t('Your changes clash with {base}, so {branch} starts from your current commit instead.', { base: from, branch: target }));
+      }
+    } else if (updateBase) {
       let switched = true;
       if (carryHeadless) switched = tryRunGit(['switch', base]);
       else runGit(['switch', base]);
@@ -166,7 +222,7 @@ export async function branchCommand(opts: BranchOptions = {}): Promise<void> {
         }
       }
     }
-    runGit(['switch', '-c', target]);
+    if (!created) runGit(['switch', '-c', target]);
   } catch (err) {
     restoreStart();
     throw err;

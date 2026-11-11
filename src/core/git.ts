@@ -231,3 +231,33 @@ export function isCommitPushed(commit: string, opts: GitOptions = {}): boolean {
   const out = tryCaptureGit(['branch', '-r', '--contains', commit], opts);
   return out !== null && out !== '';
 }
+
+/** True when `ancestor` is reachable from `descendant` (equal refs count). */
+export function isAncestor(ancestor: string, descendant: string, opts: GitOptions = {}): boolean {
+  return tryCaptureGit(['merge-base', '--is-ancestor', ancestor, descendant], opts) !== null;
+}
+
+function samePath(a: string, b: string): boolean {
+  const norm = (p: string) => {
+    const abs = resolve(p);
+    return process.platform === 'win32' ? abs.toLowerCase() : abs;
+  };
+  return norm(a) === norm(b);
+}
+
+/**
+ * True when `branch` is checked out in a worktree other than this one — the main
+ * clone sitting on `development` while an agent works in its own worktree. git
+ * refuses to switch to such a branch here ("already used by worktree").
+ */
+export function isCheckedOutElsewhere(branch: string, opts: GitOptions = {}): boolean {
+  const list = tryCaptureGit(['worktree', 'list', '--porcelain'], opts);
+  if (!list) return false;
+  const here = getRepoRoot(opts);
+  let path: string | null = null;
+  for (const line of list.split('\n')) {
+    if (line.startsWith('worktree ')) path = line.slice('worktree '.length);
+    else if (line === `branch refs/heads/${branch}` && path !== null) return !samePath(path, here);
+  }
+  return false;
+}

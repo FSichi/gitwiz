@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { branchCommand } from '../../src/commands/branch.js';
@@ -7,7 +8,7 @@ import { initCommand } from '../../src/commands/init.js';
 import { releaseFinishCommand } from '../../src/commands/release-finish.js';
 import { releaseStartCommand } from '../../src/commands/release-start.js';
 import { statusCommand } from '../../src/commands/status.js';
-import { captureGit, captureGitPaths, getCurrentBranch, tagExists } from '../../src/core/git.js';
+import { captureGit, captureGitPaths, getCurrentBranch, tagExists, tryCaptureGit } from '../../src/core/git.js';
 import { setJsonMode } from '../../src/ui/output.js';
 import { createTempRepo, type TempRepo } from './helpers/temp-repo.js';
 
@@ -32,6 +33,7 @@ async function captureStdout(run: () => Promise<void>): Promise<string> {
 describe('non-interactive commands (agent-facing)', () => {
   const originalCwd = process.cwd();
   const repos: TempRepo[] = [];
+  const extraDirs: string[] = [];
 
   function repo(opts?: { initialCommit?: boolean }): TempRepo {
     const r = createTempRepo(opts);
@@ -40,9 +42,27 @@ describe('non-interactive commands (agent-facing)', () => {
     return r;
   }
 
+  /**
+   * A clone on `develop` (pushed to origin, then left one commit behind, as when
+   * nobody pulls it) plus an empty folder for a worktree. Returns that folder.
+   */
+  function cloneOnDevelopBehind(r: TempRepo): string {
+    r.writeFile('.gitwizrc.json', JSON.stringify({ mainBranch: 'main', developBranch: 'develop' }));
+    r.commit('chore: config');
+    r.addBareOrigin();
+    r.git('switch', '-c', 'develop');
+    r.commit('feat: on develop', { 'dev.txt': 'one\n' });
+    r.git('push', '-u', 'origin', 'develop');
+    r.git('reset', '--hard', 'HEAD~1');
+    const wt = mkdtempSync(join(tmpdir(), 'gitwiz-wt-'));
+    extraDirs.push(wt);
+    return wt;
+  }
+
   afterEach(() => {
     process.chdir(originalCwd);
     for (const r of repos.splice(0)) r.cleanup();
+    for (const d of extraDirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 5 });
   });
 
   it('commit --type/--scope/-m --all builds a conventional commit', async () => {
@@ -210,6 +230,41 @@ describe('non-interactive commands (agent-facing)', () => {
     expect(status).toContain('README.md');
     expect(status).toContain('new-file.ts');
     expect(captureGit(['stash', 'list'])).toBe('');
+  });
+
+  it('branch works in a worktree while the main clone has the base checked out', async () => {
+    const r = repo();
+    const wt = cloneOnDevelopBehind(r);
+    r.git('worktree', 'add', '-b', 'scratch', wt, 'main');
+    process.chdir(wt);
+    await branchCommand({ type: 'feature', name: 'from worktree' });
+    expect(getCurrentBranch()).toBe('feature/from-worktree');
+    // From origin's develop, which is ahead of the clone's.
+    expect(captureGit(['rev-parse', 'HEAD'])).toBe(captureGit(['rev-parse', 'origin/develop']));
+    // The base is not its upstream, and the main clone was not touched.
+    expect(tryCaptureGit(['rev-parse', '--abbrev-ref', 'feature/from-worktree@{upstream}'])).toBeNull();
+    expect(r.git('branch', '--show-current')).toBe('develop');
+  });
+
+  it('branch works from a detached HEAD (git worktree add --detach)', async () => {
+    const r = repo();
+    const wt = cloneOnDevelopBehind(r);
+    r.git('worktree', 'add', '--detach', wt, 'main');
+    process.chdir(wt);
+    await branchCommand({ type: 'bugfix', name: 'detached start' });
+    expect(getCurrentBranch()).toBe('bugfix/detached-start');
+    expect(captureGit(['rev-parse', 'HEAD'])).toBe(captureGit(['rev-parse', 'origin/develop']));
+  });
+
+  it('branch in a worktree keeps unpushed commits of the local base', async () => {
+    const r = repo();
+    const wt = cloneOnDevelopBehind(r);
+    r.git('pull', '--ff-only');
+    r.commit('feat: not pushed yet', { 'local.txt': 'x\n' });
+    r.git('worktree', 'add', '--detach', wt, 'main');
+    process.chdir(wt);
+    await branchCommand({ type: 'feature', name: 'keeps local' });
+    expect(captureGit(['rev-parse', 'HEAD'])).toBe(r.git('rev-parse', 'develop'));
   });
 
   it('status --json describes the repo as data', async () => {

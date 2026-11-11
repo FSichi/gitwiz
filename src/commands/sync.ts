@@ -6,6 +6,7 @@ import {
   getCurrentBranch,
   getUpstream,
   hasRemote,
+  isCheckedOutElsewhere,
   isWorkingTreeClean,
   localBranchExists,
   remoteBranchExists,
@@ -105,7 +106,9 @@ export async function syncCommand(): Promise<void> {
         );
       }
     }
-    if (base && localBranchExists(base) && remote && remoteBranchExists(base)) {
+    // Updating the base means switching to it, which git refuses when another
+    // worktree (the main clone, usually) has it checked out.
+    if (base && localBranchExists(base) && remote && remoteBranchExists(base) && !isCheckedOutElsewhere(base)) {
       const baseCounts = getAheadBehind(`origin/${base}`, base);
       if (baseCounts && baseCounts.behind > 0) {
         choices.push({
